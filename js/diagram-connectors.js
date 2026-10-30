@@ -270,8 +270,11 @@ window.DL = window.DL || {};
       const y1c = r1.top + r1.height / 2 - wrapRect.top;
       const y2c = r2.top + r2.height / 2 - wrapRect.top;
 
-      // --- Neighboring lanes: always route through the local gap, splitting
-      //     its space among however many connections share it. ---
+      // --- Neighboring lanes: route through the local gap, splitting
+      //     its space among however many connections share it — unless the
+      //     connection carries a label that fits nowhere nearby, in which
+      //     case it falls through to a dedicated rail below the grid
+      //     (same as long jumps), instead of overlapping the elbow. ---
       if (Math.abs(laneFrom - laneTo) === 1) {
         const gapKey = Math.min(laneFrom, laneTo);
         const group = gapGroups.get(gapKey);
@@ -292,6 +295,15 @@ window.DL = window.DL || {};
           probe.remove();
           const obstacles = Array.from(surfaceEl.querySelectorAll('.box, .bpmn-shape, .bpmn-caption'))
             .map((el) => el.getBoundingClientRect());
+          // The elbow itself isn't in the DOM yet: keep the label off its
+          // three planned segments (viewport coords, like the rest).
+          [[Math.min(fromEdgeX, gapX), y1c, Math.max(fromEdgeX, gapX), y1c],
+           [gapX, Math.min(y1c, y2c), gapX, Math.max(y1c, y2c)],
+           [Math.min(gapX, toEdgeX), y2c, Math.max(gapX, toEdgeX), y2c]
+          ].forEach(([l, t, r, b]) => obstacles.push({
+            left: l + wrapRect.left - 1, top: t + wrapRect.top - 1,
+            right: r + wrapRect.left + 1, bottom: b + wrapRect.top + 1,
+          }));
           const fits = (cx, cy) => cx - w / 2 >= 0 && cx + w / 2 <= wrap.clientWidth &&
             !obstacles.some((r) =>
               cx + w / 2 + 5 > r.left - wrapRect.left &&
@@ -308,16 +320,19 @@ window.DL = window.DL || {};
               if (fits(cx, cy)) { labelPos = { x: cx, y: cy }; break searchLabel; }
             }
           }
-          if (!labelPos) labelPos = { x: gapX, y: yMid };
+          if (!labelPos) labelPos = { x: gapX, y: yMid, overlaps: true };
         }
 
-        addSeg(Math.min(fromEdgeX, gapX), y1c - 0.8, Math.abs(gapX - fromEdgeX), 1.6, dashed);
-        addSeg(gapX - 0.8, Math.min(y1c, y2c), 1.6, Math.abs(y2c - y1c), dashed);
-        addSeg(Math.min(gapX, toEdgeX), y2c - 0.8, Math.abs(toEdgeX - gapX), 1.6, dashed);
-        addArrow(toEdgeX, y2c, toRight ? 'left' : 'right');
-        if (edge.bidirectional) addArrow(fromEdgeX, y1c, fromRight ? 'left' : 'right');
-        if (labelPos) addLabel(labelPos.x, labelPos.y, edge.label);
-        return;
+        if (!edge.label || !labelPos.overlaps) {
+          addSeg(Math.min(fromEdgeX, gapX), y1c - 0.8, Math.abs(gapX - fromEdgeX), 1.6, dashed);
+          addSeg(gapX - 0.8, Math.min(y1c, y2c), 1.6, Math.abs(y2c - y1c), dashed);
+          addSeg(Math.min(gapX, toEdgeX), y2c - 0.8, Math.abs(toEdgeX - gapX), 1.6, dashed);
+          addArrow(toEdgeX, y2c, toRight ? 'left' : 'right');
+          if (edge.bidirectional) addArrow(fromEdgeX, y1c, fromRight ? 'left' : 'right');
+          if (labelPos) addLabel(labelPos.x, labelPos.y, edge.label);
+          return;
+        }
+        // No local room for the label: fall through to bottom-rail routing.
       }
 
       // fromGapIdx/toGapIdx are always distinct gutters here (the
