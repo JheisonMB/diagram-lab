@@ -161,7 +161,7 @@ Interpretation rules (important):
 - "kind" must be exactly "bpmn". Without it, the tool treats the JSON as a swimlane.
 - type: "start" and "end" = event circles; "task" = rounded rectangle; "gateway" = decision diamond.
 - Every item needs a unique "key". "id" is optional (task numbering, e.g. "1", "4b").
-- "row" (integer, 0-based): row shared by all lanes. Steps at the same point in the process share a row; the flow must advance toward higher rows.
+- "row" (integer, 0-based): row shared by all lanes. Steps at the same point in the process share a row; the flow must advance toward higher rows. Set "layout": "compact" to pack each lane from the top instead (ignores "row").
 - Automatic chaining: each "start" or "task" item connects to the next item in its own lane, unless that next item has "standalone": true. "gateway" and "end" items NEVER auto-chain to the next item in the lane: a gateway's "branches" are explicit.
 - "standalone": true cuts the automatic incoming arrow from the previous item in the lane. Use it on an item that is reached only through a branch or an explicit connection. The first item of a lane has no previous item in its lane, so it never needs it.
 - "branches" (gateway only): each branch points via "to" to an item's key, which may live in another lane. Use short labels (Yes/No).
@@ -321,8 +321,9 @@ Interpretation rules (important, not optional):
 - Every item must declare a unique "key" (used to reference it from "children" or "connections").
 - Automatic chaining: each item connects only to the NEXT item in its own lane (simple downward arrow) — don't declare this connection manually, it's automatic. To stop an item from receiving that automatic arrow (because it's reached another way, e.g. a cross connection), mark it with \`"standalone": true\`.
 - Branching ("children"): if an item opens several parallel paths within the same lane (e.g. several simultaneous validations), declare them as its "children" array (same fields as an item). They stack vertically inside the lane, with a rail connector on the left that leaves the parent and rejoins toward the next item in the lane. Do NOT use "connections" for this.
-- "row" (optional integer, 0-based): fixes the row of the grid shared by all lanes. This aligns steps from the same moment of the process horizontally across lanes. If omitted, the next free row in the lane is used. Keep "row" values increasing along the chronological flow so cross-lane steps align.
-- When an item has "children", those children occupy the row directly below it. The next item in the same lane must therefore use a row at least 2 higher (e.g. parent at row 2, children at row 3, next item at row 4). Items in other lanes may share those rows.
+- "layout" (optional, at the JSON root): "compact" (default) packs each lane from the top, ignoring "row" — no leading or internal gaps from global numbering. "aligned" restores the shared grid below.
+- "row" (optional integer, 0-based; only used with "layout": "aligned"): fixes the row of the grid shared by all lanes. This aligns steps from the same moment of the process horizontally across lanes. If omitted, the next free row in the lane is used. Keep "row" values increasing along the chronological flow so cross-lane steps align.
+- When an item has "children", those children occupy the row directly below it. With "layout": "aligned", the next item in the same lane must therefore use a row at least 2 higher (e.g. parent at row 2, children at row 3, next item at row 4). Items in other lanes may share those rows.
 - "connections" is for relationships between lanes (adjacent or not) or additional relationships (dependencies, permissions, events). Don't repeat the automatic chaining. They're routed through the gaps between columns: a local elbow between adjacent lanes when there's room; otherwise separate rails below the whole grid, before the legend.
 - Keep connection labels to 2-4 words. The engine keeps them clear of lines and boxes; don't add empty rows to make room for them.
 - Use "style": "event" (solid yellow fill) only for the node that represents the end of a process or a relevant business event.
