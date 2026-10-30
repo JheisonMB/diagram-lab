@@ -2,13 +2,16 @@
  * lane-grid.js
  * Layout shared by the lane-based diagrams (swimlane and BPMN).
  *
- *  - All lanes live in a SINGLE CSS grid: every row is shared across all
- *    lanes, so steps "at the same level" stay aligned even when they are
- *    in different lanes.
- *  - Each item occupies a row: `item.row` (0-based) if given, otherwise
- *    the next free row within its lane. An item with "children" uses the
- *    next row for its children (in parallel) and leaves the one after
- *    that free.
+ * Two modes (the caller picks via opts.compact):
+ *  - Aligned: all lanes live in a SINGLE CSS grid — every row is shared
+ *    across all lanes, so steps "at the same level" stay aligned even
+ *    when they are in different lanes. Each item occupies `item.row`
+ *    (0-based) if given, otherwise the next free row within its lane.
+ *  - Compact: each lane packs its own items from the top, ignoring
+ *    `item.row` (document order wins). No leading or internal gaps from
+ *    global row numbering.
+ * An item with "children" uses the next row for its children (in
+ * parallel) and leaves the one after that free, in both modes.
  *  - Connections are resolved here (chaining, fan-out/fan-in, lateral and
  *    explicit) and drawn with diagram-connectors.js.
  */
@@ -26,13 +29,16 @@ window.DL = window.DL || {};
 
   const hasChildren = (item) => !!(item.children && item.children.length);
 
-  /** Assigns a row to each item. Content grid rows: 0..rowCount-1. */
-  DL.layoutRows = function (lanes) {
+  /**
+   * Assigns a row to each item. Content grid rows: 0..rowCount-1.
+   * When compact, `item.row` is ignored and every lane packs from row 0.
+   */
+  DL.layoutRows = function (lanes, compact) {
     let maxRow = 0;
     const positions = lanes.map((lane) => {
       let cursor = 0;
       return (lane.items || []).map((item) => {
-        const row = Number.isInteger(item.row) ? item.row : cursor;
+        const row = (!compact && Number.isInteger(item.row)) ? item.row : cursor;
         const kids = hasChildren(item);
         cursor = row + (kids ? 2 : 1);
         maxRow = Math.max(maxRow, kids ? row + 1 : row);
@@ -47,10 +53,11 @@ window.DL = window.DL || {};
    * and items positioned on the shared grid.
    * opts.renderItem(item, key, laneIdx, posStyle) -> html
    * opts.renderChild(child, key, laneIdx) -> html
+   * opts.compact (bool): pack each lane from the top, ignoring `item.row`.
    */
   DL.buildLaneGrid = function (cfg, opts) {
     const lanes = cfg.lanes || [];
-    const { positions, rowCount } = DL.layoutRows(lanes);
+    const { positions, rowCount } = DL.layoutRows(lanes, !!(opts && opts.compact));
     const columns = lanes
       .map((lane) => ((lane.items || []).some(hasChildren) ? 'minmax(300px, 1.4fr)' : 'minmax(205px, 1fr)'))
       .join(' ');

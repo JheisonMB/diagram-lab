@@ -35,7 +35,7 @@ Interpretation rules (important):
 - "kind" must be exactly "bpmn". Without it, the tool treats the JSON as a swimlane.
 - type: "start" and "end" = event circles; "task" = rounded rectangle; "gateway" = decision diamond.
 - Every item needs a unique "key". "id" is optional (task numbering, e.g. "1", "4b").
-- "row" (integer, 0-based): row shared by all lanes. Steps at the same point in the process share a row; the flow must advance toward higher rows.
+- "row" (integer, 0-based): row shared by all lanes. Steps at the same point in the process share a row; the flow must advance toward higher rows. Set "layout": "compact" to pack each lane from the top instead (ignores "row").
 - Automatic chaining: each "start" or "task" item connects to the next item in its own lane, unless that next item has "standalone": true. "gateway" and "end" items NEVER auto-chain to the next item in the lane: a gateway's "branches" are explicit.
 - "standalone": true cuts the automatic incoming arrow from the previous item in the lane. Use it on an item that is reached only through a branch or an explicit connection. The first item of a lane has no previous item in its lane, so it never needs it.
 - "branches" (gateway only): each branch points via "to" to an item's key, which may live in another lane. Use short labels (Yes/No).

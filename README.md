@@ -18,6 +18,7 @@ for teams where not everyone has access to agentic tools: just open
      LLM to generate that same diagram type in this format.
    - **Copy code** (below the editor): copies the source text (Mermaid or
      JSON) to version it in a repo.
+   - **Clear** (next to it): empties the editor and the preview.
    - **Floating controls** (top-right of the preview, they stay in place
      while the diagram scrolls):
      - ⬇ **Save PNG** downloads the diagram as a file (white background).
@@ -211,7 +212,7 @@ diagram-lab/
 │   ├── mermaid-renderer.js # Render + auto-scaling of Mermaid diagrams
 │   ├── swimlane-renderer.js # Swimlane JSON renderer
 │   ├── bpmn-renderer.js     # BPMN JSON renderer (circles, diamonds, tasks)
-│   ├── lane-grid.js         # Shared lane grid (aligned rows)
+│   ├── lane-grid.js         # Shared lane grid (compact or aligned rows)
 │   ├── diagram-connectors.js# Connector routing (direct, rail, lateral, bus)
 │   ├── morph-icons.js       # Swaps action icons for a checkmark after success
 │   ├── export.js           # PNG rasterization (native SVG for Mermaid, html2canvas for swimlane)
@@ -308,10 +309,13 @@ of the code.
   parent, on a rail to the left of the lane, and connect in a fan-out from
   the parent and a fan-in toward the next item in the lane — no need to
   declare `connections` for that.
-- `row` (optional, integer from 1): row of the grid shared across all
-  lanes. Items in different lanes with the same `row` end up aligned
-  horizontally. If omitted, the next free row in the lane is used. Always
-  use it so steps that happen in parallel end up at the same height.
+- `layout` (optional, `"compact"` by default or `"aligned"`): compact
+  packs each lane from the top, ignoring `row`; aligned uses one grid
+  shared across all lanes.
+- `row` (optional integer, 0-based; only used with `"layout": "aligned"`):
+  row of the shared grid. Items in different lanes with the same `row`
+  end up aligned horizontally. If omitted, the next free row in the lane
+  is used.
 - `connections` (optional, at the JSON root level): list of explicit
   connections that can skip non-adjacent lanes. `style` accepts `"solid"`
   (default) or `"dashed"`; `bidirectional` adds an arrowhead at both ends;
@@ -361,6 +365,7 @@ that field, any valid JSON is treated as swimlane). Rendered by
   (destination key). They allow forking and converging without assuming
   linear order.
 - Same as swimlane: automatic chaining within the lane (unless
-  `"standalone": true`), `row` to align steps across lanes, and
+  `"standalone": true`), `row` to align steps across lanes (or
+  `"layout": "compact"` to pack each lane from the top), and
   `connections` for flows between lanes (`"dashed"` = message flow).
 - `legend`, `icon`, and `style` work the same as in the swimlane.

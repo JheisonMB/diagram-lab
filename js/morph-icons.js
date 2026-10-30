@@ -19,7 +19,7 @@
   DL.copyMorphs = DL.copyMorphs || {};
 
   var SVG_NS = 'http://www.w3.org/2000/svg';
-  var TARGETS = ['btn-copy', 'btn-copy-prompt', 'btn-save-png', 'btn-copy-png'];
+  var TARGETS = ['btn-copy', 'btn-clear', 'btn-copy-prompt', 'btn-save-png', 'btn-copy-png'];
 
   function buildCheckSvg(original) {
     var svg = document.createElementNS(SVG_NS, 'svg');

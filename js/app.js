@@ -154,6 +154,14 @@
     flashButton(e.currentTarget, '✔ Copied');
   });
 
+  document.getElementById('btn-clear').addEventListener('click', (e) => {
+    codeEl.value = '';
+    updateLineNumbers();
+    render();
+    codeEl.focus();
+    flashButton(e.currentTarget, '✔ Cleared');
+  });
+
   document.getElementById('btn-copy-prompt').addEventListener('click', (e) => {
     const prompt = (window.DL_PROMPTS && DL_PROMPTS[currentPromptKey]) || null;
     if (!prompt) {

@@ -63,6 +63,26 @@
     assert(surface.querySelector('.grid-wrap').style.paddingBottom === '',
       'No buses: no leftover padding from a previous diagram');
 
+    const compactCfg = {
+      lanes: [
+        { title: 'Early', items: [{ key: 'a', title: 'First', row: 0 }, { key: 'b', title: 'Second', row: 1 }] },
+        { title: 'Late', items: [{ key: 'c', title: 'Only', row: 6, standalone: true }] }
+      ],
+      connections: [{ from: 'b', to: 'c', label: 'Handoff' }]
+    };
+    DL.renderSwimlane(JSON.stringify(compactCfg), surface);
+    surface.redrawConnectors();
+    assert(surface.querySelector('[data-key="c"]').style.gridRow === '2',
+      'Compact: lane starting at row 6 packs its first box on the first grid row');
+    const lateLaneTop = surface.querySelector('.lane[data-lane="1"]').getBoundingClientRect().top;
+    const lateBoxTop = surface.querySelector('[data-key="c"]').getBoundingClientRect().top;
+    assert(lateBoxTop - lateLaneTop < 100,
+      'Compact: no leading whitespace above the packed lane');
+    DL.renderSwimlane(JSON.stringify({ layout: 'aligned', ...compactCfg }), surface);
+    surface.redrawConnectors();
+    assert(surface.querySelector('[data-key="c"]').style.gridRow === '8',
+      'Aligned: explicit rows keep the shared grid when opted in');
+
     pane.style.width = '1440px';
     await DL.renderMermaid(DL_EXAMPLES.architecture, surface, pane);
     assert(!surface.querySelector('.error-box'), 'Architecture: valid syntax');

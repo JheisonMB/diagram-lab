@@ -6,7 +6,9 @@
  *
  * JSON capabilities:
  *  - lanes[].items[].type: "start" | "end" | "task" | "gateway".
- *  - items[].row (optional): fixed row shared across all lanes.
+ *  - items[].row (optional): fixed row shared across all lanes
+ *    (aligned layout, the default). Set "layout": "compact" to pack
+ *    each lane from the top instead, ignoring item.row.
  *  - items[].standalone: true breaks automatic chaining with the previous item.
  *  - gateway.branches: [{ label, to }] labeled branches (e.g. "Yes"/"No").
  *    A gateway with branches does NOT auto-chain to the next item.
@@ -66,6 +68,7 @@ window.DL = window.DL || {};
     }
 
     const grid = DL.buildLaneGrid(cfg, {
+      compact: cfg.layout === 'compact',
       renderItem: (item, key, li, pos) => shapeHtml(item, key, li, pos),
       renderChild: (child, key, li) => shapeHtml(child, key, li, '')
     });

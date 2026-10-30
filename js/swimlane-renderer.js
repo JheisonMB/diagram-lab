@@ -7,8 +7,10 @@
  * JSON capabilities:
  *  - lanes[].items: steps in the lane. They auto-chain in order, unless
  *    the next one has "standalone": true.
- *  - item.row (optional): fixed row within the shared grid, to align
- *    steps across lanes. If omitted, it goes to the next free row.
+ *  - Layout is compact by default: each lane packs its items from the
+ *    top, ignoring item.row. Set "layout": "aligned" to restore the
+ *    shared grid, where item.row (optional) fixes the row to align
+ *    steps across lanes (omitted rows use the next free row).
  *  - item.children: parallel branches (next row), with fan-out/fan-in.
  *  - connections: [{ from, to, style, bidirectional, label }] between
  *    items by key; cross lanes through the gaps between columns.
@@ -49,6 +51,7 @@ window.DL = window.DL || {};
     const styleOf = (k) => legendByKey[k] || { fill: '#ffffff', border: '#999' };
 
     const grid = DL.buildLaneGrid(cfg, {
+      compact: cfg.layout !== 'aligned',
       renderItem: (item, key, li, pos) => buildBoxHtml(item, key, styleOf(item.style), li, pos),
       renderChild: (child, key, li) => buildBoxHtml(child, key, styleOf(child.style), li, '')
     });
