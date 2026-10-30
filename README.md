@@ -199,48 +199,6 @@ ask for a single code block per response and only ask clarifying questions
 when core business logic is missing (no guessing of standard technical
 details such as ports or attribute types).
 
-## Project structure
-
-```
-diagram-lab/
-├── index.html              # Markup + CSS/JS/CDN references
-├── css/
-│   └── app.css             # All styles (editor, preview, swimlane)
-├── js/
-│   ├── examples.js         # Example catalog for the selector
-│   ├── prompts.js          # Prompt library (DL_PROMPTS) for "Copy prompt"
-│   ├── mermaid-renderer.js # Render + auto-scaling of Mermaid diagrams
-│   ├── swimlane-renderer.js # Swimlane JSON renderer
-│   ├── bpmn-renderer.js     # BPMN JSON renderer (circles, diamonds, tasks)
-│   ├── lane-grid.js         # Shared lane grid (compact or aligned rows)
-│   ├── diagram-connectors.js# Connector routing (direct, rail, lateral, bus)
-│   ├── morph-icons.js       # Swaps action icons for a checkmark after success
-│   ├── export.js           # PNG rasterization (native SVG for Mermaid, html2canvas for swimlane)
-│   ├── splitter.js         # Draggable editor/preview divider
-│   ├── dragdrop.js         # Drop an .mmd/.json file onto the editor
-│   └── app.js              # Orchestrator: mode detection + UI wiring
-├── prompts/                 # Standalone prompts (.md) per diagram type
-│   ├── sequence.md
-│   ├── er.md
-│   ├── class-diagram.md
-│   ├── architecture.md
-│   ├── swimlane-json.md
-│   └── bpmn.md
-├── examples/
-│   ├── sequence.mmd
-│   ├── er.mmd
-│   ├── class-diagram.mmd
-│   ├── architecture.mmd
-│   ├── swimlane.json
-│   └── bpmn.json
-└── README.md
-```
-
-All scripts are **classic** (not ES modules) on purpose: ES modules fail to
-load via `file://` in Chrome due to CORS restrictions. Each file hangs its
-functions off a global `window.DL` namespace to avoid collisions, with no
-need for a bundler or server.
-
 ## External libraries (via CDN, nothing to install)
 
 - [mermaid](https://mermaid.js.org/) — renders Mermaid diagrams, pinned to
