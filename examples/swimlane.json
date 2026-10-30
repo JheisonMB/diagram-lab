@@ -1,0 +1,53 @@
+{
+  "title": "PAYMENT PROCESSING AND FRAUD CHECK",
+  "legend": [
+    { "key": "new", "label": "New", "fill": "#ffffff", "border": "#7a9b7f" },
+    { "key": "modified", "label": "Modified", "fill": "#ffffff", "border": "#5c8aa6" },
+    { "key": "reused", "label": "Reused", "fill": "#ffffff", "border": "#b89a52" },
+    { "key": "global", "label": "Global", "fill": "#ffffff", "border": "#8077a8" },
+    { "key": "event", "label": "Event / Process end", "fill": "#fff3b0", "border": "#c9960c", "fullFill": true }
+  ],
+  "lanes": [
+    {
+      "title": "1. API Gateway",
+      "items": [
+        { "key": "gw_req", "id": "1.1", "icon": "link", "title": "Receive checkout", "desc": "POST /v1/payments request", "style": "reused", "row": 0 },
+        { "key": "gw_auth", "id": "1.2", "icon": "shield", "title": "Validate token", "desc": "Verify JWT and scopes", "style": "global", "row": 1 }
+      ]
+    },
+    {
+      "title": "2. Payment Orchestrator",
+      "items": [
+        { "key": "orch_init", "id": "2.1", "icon": "server", "title": "Init transaction", "desc": "Create pending record", "style": "modified", "row": 1, "standalone": true },
+        {
+          "key": "orch_checks", "id": "2.2", "icon": "shuffle", "title": "Pre-auth checks", "desc": "Run parallel verifications", "style": "new", "row": 2,
+          "children": [
+            { "key": "chk_balance", "id": "2.2a", "icon": "credit-card", "title": "Check funds", "desc": "Verify wallet balance", "style": "reused" },
+            { "key": "chk_limits", "id": "2.2b", "icon": "settings", "title": "Daily limits", "desc": "Validate user thresholds", "style": "new" }
+          ]
+        },
+        { "key": "orch_capture", "id": "2.3", "icon": "credit-card", "title": "Capture funds", "desc": "Commit payment charge", "style": "modified", "row": 4 },
+        { "key": "orch_done", "id": "2.4", "icon": "zap", "title": "Payment completed", "desc": "Emit OrderPaid event", "style": "event", "row": 5 }
+      ]
+    },
+    {
+      "title": "3. Fraud Engine",
+      "items": [
+        { "key": "fraud_eval", "id": "3.1", "icon": "shield", "title": "Risk scoring", "desc": "ML model evaluation", "style": "new", "row": 3, "standalone": true }
+      ]
+    },
+    {
+      "title": "4. Ledger & Notifications",
+      "items": [
+        { "key": "led_save", "id": "4.1", "icon": "database", "title": "Append ledger", "desc": "Write immutable entry", "style": "reused", "row": 4, "standalone": true },
+        { "key": "notif_send", "id": "4.2", "icon": "bell", "title": "Send receipt", "desc": "Dispatch email to user", "style": "reused", "row": 5, "standalone": true }
+      ]
+    }
+  ],
+  "connections": [
+    { "from": "gw_auth", "to": "orch_init", "style": "solid", "label": "Forward request" },
+    { "from": "orch_checks", "to": "fraud_eval", "style": "dashed", "bidirectional": true, "label": "Sync risk check" },
+    { "from": "orch_capture", "to": "led_save", "style": "solid", "label": "Record entry" },
+    { "from": "orch_done", "to": "notif_send", "style": "dashed", "label": "Async event" }
+  ]
+}

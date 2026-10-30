@@ -1,0 +1,25 @@
+---
+config:
+  architecture:
+    padding: 48
+    iconSize: 96
+    fontSize: 16
+    idealEdgeLengthMultiplier: 4
+    nodeSeparation: 100
+    seed: 1
+---
+architecture-beta
+    group clients(cloud)[Clients]
+    service web(internet)[Web and Mobile Clients] in clients
+
+    group edge(cloud)[Edge]
+    service lb(server)[Load Balancer HTTPS 443] in edge
+
+    group backend(cloud)[Backend]
+    service api(server)[REST API port 8080] in backend
+    service db(database)[PostgreSQL Database] in backend
+
+    align row web lb api db
+    web:R --> L:lb
+    lb:R --> L:api
+    api:R --> L:db

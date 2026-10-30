@@ -1,0 +1,500 @@
+/* ============================================================
+   Diagram Lab — styles
+   Palette: white background on diagrams (export-friendly for Google
+   Docs), editor in a "cool gray paper" tone to reduce eye strain.
+   ============================================================ */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #eef0f3;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: #1c2430;
+}
+
+header {
+  padding: 10px 16px;
+  background: #16202e;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+header h1 { font-size: 14.5px; margin: 0; font-weight: 600; color: #cfd8e8; letter-spacing: 0.2px; }
+
+select, button {
+  background: #2a3a52;
+  color: #fff;
+  border: 1px solid #3c4f6d;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+select:hover, button:hover { background: #35486a; }
+
+button { display: inline-flex; align-items: center; gap: 6px; }
+button svg { width: 14px; height: 14px; flex-shrink: 0; stroke-width: 2; }
+button:disabled { opacity: 0.7; cursor: default; }
+
+.badge {
+  font-size: 11px;
+  padding: 4px 9px;
+  border-radius: 10px;
+  background: #233247;
+  border: 1px solid #3c4f6d;
+  color: #b9c6dc;
+  white-space: nowrap;
+}
+
+/* ---- Top toolbar: "pill"-style groups instead of loose buttons ---- */
+.toolbar { display: flex; align-items: center; gap: 8px; }
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #1d2938;
+  border: 1px solid #334760;
+  border-radius: 8px;
+  padding: 3px;
+}
+.toolbar-icon { width: 14px; height: 14px; color: #7e90ab; margin-left: 6px; flex-shrink: 0; }
+.toolbar-group select {
+  background: transparent;
+  border: none;
+  color: #dde4f0;
+  padding: 5px 6px;
+  font-size: 12px;
+}
+.toolbar-group select:hover { background: #28364a; border-radius: 5px; }
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: #cfd8e8;
+  padding: 6px 7px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn:hover { background: #2e4059; color: #fff; }
+.icon-btn svg { width: 15px; height: 15px; }
+
+main { flex: 1; display: flex; overflow: hidden; }
+
+/* ---- Editor panel: "cool gray paper" style ---- */
+.editor-pane {
+  width: 36%;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  max-width: 75%;
+  background: #e6e9ed;
+}
+.editor-pane.dragover { outline: 2px dashed #7c8cff; outline-offset: -4px; }
+
+.splitter {
+  width: 6px;
+  cursor: col-resize;
+  background: #c7cddb;
+  flex-shrink: 0;
+}
+.splitter:hover, .splitter.dragging { background: #7c8cff; }
+
+.pane-label {
+  padding: 6px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #5a6472;
+  background: #d9dde3;
+  border-bottom: 1px solid #c3c9d2;
+}
+
+/* ---- Code editor: "light VSCode" look ---- */
+.code-editor-wrap { flex: 1; display: flex; overflow: hidden; background: #ffffff; }
+
+.line-numbers {
+  flex-shrink: 0;
+  padding: 14px 10px 14px 14px;
+  font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #8c99ab;
+  text-align: right;
+  background: #ffffff;
+  border-right: 1px solid #e6e9ef;
+  overflow: hidden;
+  user-select: none;
+}
+
+textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 14px 16px;
+  font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  background: #ffffff;
+  color: #1e1e1e;
+  caret-color: #1e1e1e;
+}
+textarea::selection { background: #add6ff; }
+
+.editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 7px 10px;
+  background: #d9dde3;
+  border-top: 1px solid #c3c9d2;
+}
+.btn-small {
+  background: #ffffff;
+  color: #3c4a63;
+  border: 1px solid #c3c9d2;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.btn-small:hover { background: #eef1f6; border-color: #9aa5c7; }
+.btn-small svg { width: 13px; height: 13px; stroke-width: 2; }
+
+/* ---- Preview panel: "transparent" design-editor-style background ----
+   .preview-wrap does not scroll. It holds the scroller (.preview-pane) and
+   the floating controls, so the controls stay in place while the diagram scrolls. */
+.preview-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+.preview-pane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  overflow: auto;
+  padding: 24px;
+  display: flex;
+  background-color: #eef0f3;
+  background-image:
+    linear-gradient(45deg, #dfe3e9 25%, transparent 25%),
+    linear-gradient(-45deg, #dfe3e9 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #dfe3e9 75%),
+    linear-gradient(-45deg, transparent 75%, #dfe3e9 75%);
+  background-size: 22px 22px;
+  background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+}
+
+#preview-surface {
+  background: #ffffff;
+  display: inline-block;
+  vertical-align: top;
+  width: max-content;
+  padding: 28px 32px;
+  border: 1px solid #d3d9e3;
+  border-radius: 2px;
+  box-shadow: 0 6px 18px rgba(20, 30, 50, 0.08);
+  min-width: 200px;
+  min-height: 100px;
+  transform-origin: 0 0;
+}
+
+/* Layout box of the zoomed paper: JS sets its size to the scaled size, so
+   centering and scrolling use the visible size, not the untransformed one. */
+.zoom-frame {
+  flex-shrink: 0;
+  margin: auto;
+  overflow: hidden;
+}
+
+.float-controls {
+  position: absolute;
+  top: 20px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 5;
+}
+.float-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: #ffffff;
+  border: 1px solid #d3d9e3;
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 4px 14px rgba(20, 30, 50, 0.12);
+}
+.export-controls .icon-btn {
+  color: #3c4a63;
+  padding: 7px;
+  border-radius: 6px;
+}
+.export-controls .icon-btn:hover { background: #eef1f6; color: #1e2a3d; }
+.export-controls .icon-btn.flash-ok { background: #1f8a4c; color: #fff; }
+.zoom-btn {
+  background: transparent;
+  border: none;
+  color: #3c4a63;
+  padding: 7px;
+  border-radius: 6px;
+  display: flex;
+}
+.zoom-btn:hover { background: #eef1f6; }
+.zoom-btn svg { width: 15px; height: 15px; stroke-width: 2; }
+.zoom-level {
+  font-size: 10.5px;
+  color: #5a6472;
+  padding: 3px 0;
+  font-family: Consolas, monospace;
+}
+.icon-btn.flash-ok { background: #1f8a4c; color: #fff; }
+.icon-btn.flash-error { background: #a53a3a; color: #fff; }
+.btn-small.flash-ok { background: #e4f6ea; border-color: #1f8a4c; color: #1f8a4c; }
+.btn-small.flash-error { background: #fdecec; border-color: #a53a3a; color: #a53a3a; }
+.zoom-btn.flash-ok { background: #e4f6ea; color: #1f8a4c; }
+
+
+.error-box {
+  padding: 14px;
+  background: #fdecec;
+  border: 1px solid #e07a7a;
+  border-radius: 6px;
+  color: #a52a2a;
+  font-family: monospace;
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  max-width: 600px;
+}
+
+/* ============================================================
+   Modo Swimlane (renderizado desde JSON)
+   ============================================================ */
+.diagram-title {
+  background: #1f3356;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 9px 18px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-bottom: 20px;
+}
+.grid-wrap { position: relative; }
+.lanes {
+  display: grid;
+  column-gap: 34px;
+  row-gap: 0;
+  align-items: stretch;
+}
+.lane {
+  background: #fcfdfe;
+  border: 1px solid #c3cada;
+  border-top: none;
+  border-radius: 0 0 2px 2px;
+}
+.lanes > .box,
+.lanes > .box-row {
+  margin: 7px 10px;
+  align-self: start;
+}
+.lanes > .bpmn-event,
+.lanes > .bpmn-gateway {
+  align-self: start;
+  justify-self: center;
+  width: 44px;
+  height: 44px;
+  margin: 7px auto 60px;
+  position: relative;
+}
+.bpmn-circle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #2b4a8b;
+}
+.bpmn-end .bpmn-circle { border-width: 4px; border-color: #8b2c2c; }
+.bpmn-diamond {
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  width: 30px;
+  height: 30px;
+  background: #faf4e6;
+  border: 2px solid #b89a52;
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+.bpmn-caption {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  background: #fcfdfe;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1c2430;
+  white-space: nowrap;
+}
+.bpmn-task { border-left-color: #2b4a8b; }
+.legend-circle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #2b4a8b;
+  background: #fff;
+  display: inline-block;
+}
+.legend-diamond {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid #b89a52;
+  background: #faf4e6;
+  transform: rotate(45deg);
+  display: inline-block;
+}
+.legend-line {
+  width: 22px;
+  border-top: 1.5px solid #5a6b8c;
+  display: inline-block;
+}
+.legend-line.dashed { border-top-style: dashed; border-color: #5a6b8c; }
+.lane-title {
+  background: #eef1f6;
+  color: #33415c;
+  border: 1px solid #c3cada;
+  border-bottom: none;
+  font-weight: 600;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: center;
+  padding: 7px 8px;
+  border-radius: 2px 2px 0 0;
+}
+.box {
+  background: #ffffff;
+  border: 1px solid #c3cada;
+  border-left-width: 5px;
+  border-radius: 2px;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.box .box-id {
+  font-family: Consolas, 'Courier New', monospace;
+  font-weight: 700;
+  font-size: 12px;
+  color: #39506f;
+  margin-right: 5px;
+}
+.box .box-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: #1c2430;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.box .box-title svg { width: 14px; height: 14px; flex-shrink: 0; stroke: #39506f; }
+.box .box-desc { color: #55607a; }
+.box.box-highlight {
+  border-left-width: 1px;
+  border-width: 1.5px;
+  font-weight: 600;
+}
+.box.box-highlight .box-desc { color: #4a3c10; }
+.box-row { display: flex; flex-direction: column; gap: 8px; }
+.lanes > .box-row { margin-left: 22px; }
+.box-row .box { margin: 0; }
+
+.legend-row {
+  display: flex;
+  gap: 30px;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid #dde2ec;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  font-size: 13px;
+  color: #45506a;
+}
+.legend-group { display: flex; gap: 16px; align-items: center; }
+.legend-chip { display: flex; align-items: center; gap: 6px; }
+.legend-swatch {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  background: #ffffff;
+  border: 1px solid #c3cada;
+  border-left-width: 3px;
+  display: inline-block;
+}
+
+.conn-seg { position: absolute; background: #5a6b8c; pointer-events: none; }
+.conn-seg.dashed { background-color: transparent !important; }
+.conn-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  border: 1px solid #c3cada;
+  border-radius: 4px;
+  padding: 3px 7px;
+  font-size: 10px;
+  line-height: 1.25;
+  z-index: 3;
+  color: #45506a;
+  white-space: nowrap;
+}
+.conn-arrow {
+  position: absolute;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid #5a6b8c;
+}
+
+/* ---- "bare" mode: preview only, used for automated screenshots ---- */
+body.bare-mode header,
+body.bare-mode .editor-pane,
+body.bare-mode .splitter {
+  display: none !important;
+}
+body.bare-mode .preview-pane {
+  width: 100%;
+  background: #ffffff;
+  background-image: none;
+  padding: 20px;
+}
+body.bare-mode #preview-surface {
+  border: none;
+  box-shadow: none;
+}
+body.bare-mode .float-controls {
+  display: none !important;
+}
