@@ -57,6 +57,19 @@
     surface.redrawConnectors();
     checkLanes('two lanes / labeled connection at the same level');
     DL.renderSwimlane(JSON.stringify({
+      layout: 'aligned',
+      lanes: [
+        { title: 'Left', items: [{ key: 'a1', title: 'A1', row: 0 }, { key: 'a2', title: 'A2', row: 1 }] },
+        { title: 'Right', items: [{ key: 'b1', title: 'B1', row: 0 }, { key: 'b2', title: 'B2', row: 1 }, { key: 'b3', title: 'B3', row: 2 }, { key: 'b4', title: 'B4', row: 3 }] }
+      ],
+      connections: [
+        { from: 'b2', to: 'a1', label: 'Query topic repos' },
+        { from: 'b3', to: 'a2', label: 'Fetch documents' }
+      ]
+    }), surface);
+    surface.redrawConnectors();
+    checkLanes('shared gutter / two labeled connections keep labels apart');
+    DL.renderSwimlane(JSON.stringify({
       lanes: [{ title: 'Local', items: [{ key: 'a', title: 'Start' }, { key: 'b', title: 'End' }] }]
     }), surface);
     surface.redrawConnectors();
