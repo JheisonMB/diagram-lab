@@ -1,0 +1,52 @@
+{
+  "kind": "bpmn",
+  "title": "PAYMENT CLAIM (BPMN process)",
+  "lanes": [
+    {
+      "title": "Customer",
+      "items": [
+        { "key": "e1", "type": "start", "title": "Start: claim", "row": 0 },
+        { "key": "t1", "type": "task", "id": "1", "icon": "smartphone", "title": "Submit claim", "desc": "Via the bank's app", "row": 1 },
+        { "key": "e3", "type": "end", "title": "Customer notified", "row": 7, "standalone": true }
+      ]
+    },
+    {
+      "title": "Digital Channel",
+      "items": [
+        { "key": "t2", "type": "task", "id": "2", "icon": "user-check", "title": "Verify identity", "desc": "Customer authentication", "row": 2 },
+        { "key": "t3", "type": "task", "id": "3", "icon": "file-plus", "title": "Create case", "desc": "Registers the claim case", "row": 3 }
+      ]
+    },
+    {
+      "title": "Payments Back Office",
+      "items": [
+        {
+          "key": "g1", "type": "gateway", "title": "Amount > threshold?", "row": 4,
+          "branches": [{ "label": "Yes", "to": "t5" }, { "label": "No", "to": "t4" }]
+        },
+        { "key": "t5", "type": "task", "id": "4", "icon": "user-round-search", "title": "Manual review", "desc": "Analyst validates the case", "row": 5 },
+        { "key": "t6", "type": "task", "id": "5", "icon": "file-check", "title": "Generate resolution", "desc": "Issues the case resolution", "row": 6 }
+      ]
+    },
+    {
+      "title": "Automated Rules",
+      "items": [
+        { "key": "t4", "type": "task", "id": "4b", "icon": "cpu", "title": "Automated review", "desc": "Payments rules engine", "row": 5 }
+      ]
+    },
+    {
+      "title": "Core System",
+      "items": [
+        { "key": "t7", "type": "task", "id": "6", "icon": "database", "title": "Update account", "desc": "Impacts account status", "row": 7 },
+        { "key": "e2", "type": "end", "title": "Claim resolved", "row": 8 }
+      ]
+    }
+  ],
+  "connections": [
+    { "from": "t1", "to": "t2", "style": "solid" },
+    { "from": "t3", "to": "g1", "style": "solid" },
+    { "from": "t4", "to": "t6", "style": "solid" },
+    { "from": "t6", "to": "t7", "style": "solid" },
+    { "from": "t6", "to": "e3", "style": "dashed", "label": "Notification" }
+  ]
+}

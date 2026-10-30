@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Diagram Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Diagram Lab</h1>
+  </div>
+  <span class="badge" id="mode-badge">detecting…</span>
+
+  <div class="toolbar">
+    <div class="toolbar-group" title="Load an example and copy its generation prompt">
+      <i data-lucide="layout-template" class="toolbar-icon"></i>
+      <select id="examples">
+        <option value="">Load example…</option>
+        <option value="sequence">Mermaid: Sequence (autonumber)</option>
+        <option value="er">Mermaid: Entity-Relationship</option>
+        <option value="classDiagram">Mermaid: Class diagram</option>
+        <option value="architecture">Mermaid: Architecture (architecture-beta)</option>
+        <option value="swimlane">JSON: Technical swimlane (custom engine)</option>
+        <option value="bpmn">JSON: BPMN process (custom engine)</option>
+      </select>
+      <button id="btn-copy-prompt" class="btn-small" title="Copy prompt (XML tags) to generate this diagram type with an LLM"><i data-lucide="sparkles"></i><span class="btn-label">Copy prompt</span></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="editor-pane" id="editor-pane">
+    <div class="pane-label"><span>Code (Mermaid or JSON — auto-detected) · drag a .mmd/.json file here</span></div>
+    <div class="code-editor-wrap">
+      <div class="line-numbers" id="line-numbers"><div>1</div></div>
+      <textarea id="code" spellcheck="false"></textarea>
+    </div>
+    <div class="editor-footer">
+      <button id="btn-copy" class="btn-small"><i data-lucide="copy"></i><span class="btn-label">Copy code</span></button>
+    </div>
+  </div>
+  <div class="splitter" id="splitter"></div>
+  <div class="preview-wrap">
+    <div class="preview-pane">
+      <div class="zoom-frame" id="zoom-frame">
+        <div id="preview-surface"></div>
+      </div>
+    </div>
+    <div class="float-controls">
+      <div class="float-group export-controls">
+        <button id="btn-save-png" class="icon-btn" title="Save PNG"><i data-lucide="download"></i></button>
+        <button id="btn-copy-png" class="icon-btn" title="Copy image to clipboard"><i data-lucide="image-down"></i></button>
+      </div>
+      <div class="float-group zoom-controls">
+        <button id="zoom-in" class="zoom-btn" title="Zoom in"><i data-lucide="zoom-in"></i></button>
+        <span class="zoom-level" id="zoom-level">100%</span>
+        <button id="zoom-out" class="zoom-btn" title="Zoom out"><i data-lucide="zoom-out"></i></button>
+        <button id="zoom-reset" class="zoom-btn" title="Fit to screen"><i data-lucide="maximize"></i></button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- External libraries (CDN, no local install) -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+<!-- Own modules (classic scripts, no bundler: file:// compatible) -->
+<script src="js/examples.js"></script>
+<script src="js/prompts.js"></script>
+<script src="js/mermaid-renderer.js"></script>
+<script src="js/diagram-connectors.js"></script>
+<script src="js/lane-grid.js"></script>
+<script src="js/swimlane-renderer.js"></script>
+<script src="js/bpmn-renderer.js"></script>
+<script src="js/splitter.js"></script>
+<script src="js/dragdrop.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
+<script src="js/morph-icons.js"></script>
+
+</body>
+</html>

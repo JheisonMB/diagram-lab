@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant API as API Gateway
+    participant SVC as Payment Service
+    participant DB as Database
+
+    U->>+API: POST /compensation
+    API->>+SVC: Validate and route
+    SVC->>+DB: Query operation status
+    DB-->>-SVC: Query result
+    SVC->>SVC: Apply business rules
+    alt Operation approved
+        SVC-->>API: 200 OK (processed response)
+        API-->>U: 200 OK (result)
+    else Operation rejected
+        SVC-->>API: 409 Conflict (business rule failed)
+        API-->>U: 409 Conflict (result)
+    end
+    deactivate SVC
+    deactivate API
+
+    Note over SVC,DB: Transaction recorded in Operation Registry

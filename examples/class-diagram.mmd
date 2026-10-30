@@ -1,0 +1,34 @@
+classDiagram
+    direction LR
+    class PaymentService_01_CO["PaymentService-01-CO"] {
+        -AccountClient: AccountClient
+        -LedgerClient: LedgerClient
+        -Log: Log
+        -Dto: DTO
+        +ServiceExecution() void
+        +DataBaseExecution() void
+    }
+    class DTO {
+        -Street: char
+        -City: char
+        -Country: char
+        -PostalCode: int
+        -State: int
+        +equals() void
+        +ToString() void
+    }
+    class AccountClient {
+        -Logs: Log
+        -ApiConnector: Connector
+        +PaymentAch() void
+        +ReportAch() void
+    }
+    class LedgerClient {
+        -Logs: Log
+        -Jdbc: JdbcClient
+        +InsertExecution() void
+        +UpdateExecution() void
+    }
+    PaymentService_01_CO --> AccountClient
+    PaymentService_01_CO --> LedgerClient
+    PaymentService_01_CO --> DTO

@@ -1,0 +1,48 @@
+erDiagram
+    direction LR
+    CUSTOMER {
+        string customer_id PK
+        string name
+        string document_id UK
+        string email
+    }
+    ACCOUNT {
+        string account_id PK
+        string customer_id FK
+        string account_type
+        decimal balance
+    }
+    CARD {
+        string card_id PK
+        string account_id FK
+        string masked_number UK
+        date expiration_date
+        string status
+    }
+    MERCHANT {
+        string merchant_id PK
+        string name
+        string mcc_category
+    }
+    AUTHORIZATION {
+        string authorization_id PK
+        string card_id FK
+        string merchant_id FK
+        decimal amount
+        string currency
+        string status
+        datetime timestamp
+    }
+    POSTING {
+        string posting_id PK
+        string authorization_id FK
+        decimal posted_amount
+        string reconciliation_status
+        date process_date
+    }
+
+    CUSTOMER ||--o{ ACCOUNT : owns
+    ACCOUNT ||--o{ CARD : issues
+    CARD ||--o{ AUTHORIZATION : generates
+    MERCHANT ||--o{ AUTHORIZATION : receives
+    AUTHORIZATION ||--o| POSTING : settles
