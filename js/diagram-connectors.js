@@ -108,6 +108,33 @@ window.DL = window.DL || {};
               y + h / 2 + 4 > r.top - wrapRect.top &&
               y - h / 2 - 4 < r.bottom - wrapRect.top));
           if (freeX !== undefined) x = freeX;
+        } else {
+          // Safety net: an elbow drawn after this label's spot was chosen
+          // (a later sibling sharing the gutter) can still cross it. Nudge
+          // to the nearest free cell — a no-op when nothing collides.
+          const w = label.offsetWidth;
+          const h = label.offsetHeight;
+          const obstacles = Array.from(wrap.querySelectorAll('.conn-seg, .conn-arrow, .conn-label, .box, .bpmn-shape, .bpmn-caption'))
+            .filter((el) => el !== label)
+            .map((el) => el.getBoundingClientRect());
+          const fits = (cx, cy) => cx - w / 2 >= 0 && cx + w / 2 <= wrap.clientWidth && cy - h / 2 >= 0 &&
+            !obstacles.some((r) =>
+              cx + w / 2 + 5 > r.left - wrapRect.left &&
+              cx - w / 2 - 5 < r.right - wrapRect.left &&
+              cy + h / 2 + 4 > r.top - wrapRect.top &&
+              cy - h / 2 - 4 < r.bottom - wrapRect.top);
+          if (!fits(x, y)) {
+            let found = null;
+            spiral:
+            for (let ring = 12; ring <= 132; ring += 12) {
+              for (let step = 0; step < 12; step++) {
+                const a = (step / 12) * Math.PI * 2;
+                const cx = x + Math.cos(a) * ring, cy = y + Math.sin(a) * ring * 0.75;
+                if (fits(cx, cy)) { found = { x: cx, y: cy }; break spiral; }
+              }
+            }
+            if (found) { x = found.x; y = found.y; }
+          }
         }
         label.style.left = x + 'px';
         label.style.top = y + 'px';
@@ -293,8 +320,24 @@ window.DL = window.DL || {};
           const w = probe.offsetWidth;
           const h = probe.offsetHeight;
           probe.remove();
-          const obstacles = Array.from(surfaceEl.querySelectorAll('.box, .bpmn-shape, .bpmn-caption'))
+          const obstacles = Array.from(surfaceEl.querySelectorAll('.box, .bpmn-shape, .bpmn-caption, .conn-seg, .conn-arrow'))
             .map((el) => el.getBoundingClientRect());
+          // Labels queued for earlier connections aren't in the DOM yet:
+          // probe-measure them so siblings sharing one gutter don't
+          // converge on the same free cell and pile up.
+          labels.forEach(({ x: lx, y: ly, text: lt, rail: lr }) => {
+            const queued = document.createElement('span');
+            queued.className = 'conn-label';
+            queued.textContent = lt;
+            wrap.appendChild(queued);
+            const qw = queued.offsetWidth, qh = queued.offsetHeight;
+            queued.remove();
+            const qy = lr ? ly - qh / 2 - 7 : ly;
+            obstacles.push({
+              left: wrapRect.left + lx - qw / 2, top: wrapRect.top + qy - qh / 2,
+              right: wrapRect.left + lx + qw / 2, bottom: wrapRect.top + qy + qh / 2,
+            });
+          });
           // The elbow itself isn't in the DOM yet: keep the label off its
           // three planned segments (viewport coords, like the rest).
           [[Math.min(fromEdgeX, gapX), y1c, Math.max(fromEdgeX, gapX), y1c],
