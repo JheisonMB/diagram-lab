@@ -51,6 +51,17 @@ window.DL = window.DL || {};
     const labels = [];
     const laneEls = Array.from(surfaceEl.querySelectorAll('.lane'));
     const laneRects = laneEls.map((el) => el.getBoundingClientRect());
+    const laneTop = laneRects.length ? Math.min(...laneRects.map((r) => r.top)) - wrapRect.top : 0;
+
+    function measure(text) {
+      const probe = document.createElement('span');
+      probe.className = 'conn-label';
+      probe.textContent = text;
+      wrap.appendChild(probe);
+      const size = { w: probe.offsetWidth, h: probe.offsetHeight };
+      probe.remove();
+      return size;
+    }
 
     function addSeg(x, y, w, h, dashed) {
       const seg = document.createElement('div');
@@ -94,7 +105,7 @@ window.DL = window.DL || {};
           const w = label.offsetWidth;
           const h = label.offsetHeight;
           y -= h / 2 + 7;
-          const obstacles = Array.from(wrap.querySelectorAll('.conn-seg, .conn-arrow, .conn-label, .box, .bpmn-shape, .bpmn-caption'))
+          const obstacles = Array.from(wrap.querySelectorAll('.conn-seg, .conn-arrow, .conn-label, .box, .lane-title, .bpmn-shape, .bpmn-caption'))
             .filter((el) => el !== label)
             .map((el) => el.getBoundingClientRect());
           // Adjacent lanes share a vertical gutter: find free caption space
@@ -103,10 +114,10 @@ window.DL = window.DL || {};
           for (let d = 16; d < wrap.clientWidth; d += 16) candidates.push(x + d, x - d);
           const freeX = candidates.find((cx) => cx - w / 2 >= 0 && cx + w / 2 <= wrap.clientWidth &&
             !obstacles.some((r) =>
-              cx + w / 2 + 5 > r.left - wrapRect.left &&
-              cx - w / 2 - 5 < r.right - wrapRect.left &&
-              y + h / 2 + 4 > r.top - wrapRect.top &&
-              y - h / 2 - 4 < r.bottom - wrapRect.top));
+              cx + w / 2 + 4 > r.left - wrapRect.left &&
+              cx - w / 2 - 4 < r.right - wrapRect.left &&
+              y + h / 2 + 2 > r.top - wrapRect.top &&
+              y - h / 2 - 2 < r.bottom - wrapRect.top));
           if (freeX !== undefined) x = freeX;
         } else {
           // Safety net: an elbow drawn after this label's spot was chosen
@@ -114,15 +125,15 @@ window.DL = window.DL || {};
           // to the nearest free cell — a no-op when nothing collides.
           const w = label.offsetWidth;
           const h = label.offsetHeight;
-          const obstacles = Array.from(wrap.querySelectorAll('.conn-seg, .conn-arrow, .conn-label, .box, .bpmn-shape, .bpmn-caption'))
+          const obstacles = Array.from(wrap.querySelectorAll('.conn-seg, .conn-arrow, .conn-label, .box, .lane-title, .bpmn-shape, .bpmn-caption'))
             .filter((el) => el !== label)
             .map((el) => el.getBoundingClientRect());
-          const fits = (cx, cy) => cx - w / 2 >= 0 && cx + w / 2 <= wrap.clientWidth && cy - h / 2 >= 0 &&
+          const fits = (cx, cy) => cx - w / 2 >= 0 && cx + w / 2 <= wrap.clientWidth && cy - h / 2 >= laneTop &&
             !obstacles.some((r) =>
-              cx + w / 2 + 5 > r.left - wrapRect.left &&
-              cx - w / 2 - 5 < r.right - wrapRect.left &&
-              cy + h / 2 + 4 > r.top - wrapRect.top &&
-              cy - h / 2 - 4 < r.bottom - wrapRect.top);
+              cx + w / 2 + 4 > r.left - wrapRect.left &&
+              cx - w / 2 - 4 < r.right - wrapRect.left &&
+              cy + h / 2 + 2 > r.top - wrapRect.top &&
+              cy - h / 2 - 2 < r.bottom - wrapRect.top);
           if (!fits(x, y)) {
             let found = null;
             spiral:
@@ -208,7 +219,10 @@ window.DL = window.DL || {};
         addSeg(x2 - 0.8, midY, 1.6, Math.max(y2 - midY, 1.6), false);
       }
       addArrow(x2, y2, 'down');
-      if (edge.label && !caption) addLabel(x1 + 20, midY, edge.label);
+      if (edge.label && !caption) {
+        const { w } = measure(edge.label);
+        addLabel(x1 + w / 2 + 8, midY, edge.label);
+      }
     });
 
     // --- Conectores laterales (compat, columnas adyacentes) ---
@@ -254,18 +268,7 @@ window.DL = window.DL || {};
       return { left: r.left - wrapRect.left, right: r.right - wrapRect.left, top: r.top - wrapRect.top, bottom: r.bottom - wrapRect.top };
     };
     const boxRects = Array.from(wrap.querySelectorAll('.box, .bpmn-shape, .bpmn-caption')).map(rel);
-    const laneTop = laneRects.length ? Math.min(...laneRects.map((r) => r.top)) - wrapRect.top : 0;
     const keyOf = (el) => el.dataset.key || '';
-
-    function measure(text) {
-      const probe = document.createElement('span');
-      probe.className = 'conn-label';
-      probe.textContent = text;
-      wrap.appendChild(probe);
-      const size = { w: probe.offsetWidth, h: probe.offsetHeight };
-      probe.remove();
-      return size;
-    }
 
     const plans = busEdges.map((edge) => {
       const laneFrom = laneIndexOf(edge.fromEl);
@@ -460,7 +463,7 @@ window.DL = window.DL || {};
       let labelPos = null;
       if (edge.label) {
         const { w, h } = measure(edge.label);
-        const obstacles = Array.from(surfaceEl.querySelectorAll('.box, .bpmn-shape, .bpmn-caption, .conn-seg, .conn-arrow'))
+        const obstacles = Array.from(surfaceEl.querySelectorAll('.box, .lane-title, .bpmn-shape, .bpmn-caption, .conn-seg, .conn-arrow'))
           .map((el) => el.getBoundingClientRect());
         // Labels queued for earlier connections aren't in the DOM yet:
         // probe-measure them so siblings sharing one gutter don't
@@ -484,10 +487,10 @@ window.DL = window.DL || {};
         }));
         const fits = (cx, cy) => cx - w / 2 >= 0 && cx + w / 2 <= wrap.clientWidth && cy - h / 2 >= laneTop &&
           !obstacles.some((r) =>
-            cx + w / 2 + 5 > r.left - wrapRect.left &&
-            cx - w / 2 - 5 < r.right - wrapRect.left &&
-            cy + h / 2 + 4 > r.top - wrapRect.top &&
-            cy - h / 2 - 4 < r.bottom - wrapRect.top);
+            cx + w / 2 + 4 > r.left - wrapRect.left &&
+            cx - w / 2 - 4 < r.right - wrapRect.left &&
+            cy + h / 2 + 2 > r.top - wrapRect.top &&
+            cy - h / 2 - 2 < r.bottom - wrapRect.top);
         const yMid = (y1 + y2) / 2;
         const yCandidates = [yMid];
         const ySpan = Math.abs(y2 - y1) / 2 + 60;

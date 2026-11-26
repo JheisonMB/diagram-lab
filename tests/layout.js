@@ -12,7 +12,7 @@
 
   function checkLanes(name) {
     const labels = Array.from(surface.querySelectorAll('.conn-label, .bpmn-caption'));
-    const obstacles = Array.from(surface.querySelectorAll('.conn-seg, .conn-arrow, .box'));
+    const obstacles = Array.from(surface.querySelectorAll('.conn-seg, .conn-arrow, .box, .lane-title'));
     labels.forEach((label, index) => {
       const rect = label.getBoundingClientRect();
       assert(!obstacles.some((el) => overlap(rect, el.getBoundingClientRect())),
