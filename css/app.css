@@ -321,14 +321,14 @@ textarea::selection { background: #add6ff; }
 .lane-stack {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 34px;
   padding: 12px 10px 14px;
   min-width: 0;
   position: relative;
 }
 .lane-stack > .box,
 .lane-stack > .box-row { margin: 0; }
-.lane-stack > .box-row { margin: -14px 0 0 22px; }
+.lane-stack > .box-row { margin: -20px 0 0 22px; }
 .lane-stack > .bpmn-event,
 .lane-stack > .bpmn-gateway {
   align-self: center;
