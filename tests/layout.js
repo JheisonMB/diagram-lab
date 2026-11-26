@@ -85,8 +85,9 @@
     };
     DL.renderSwimlane(JSON.stringify(compactCfg), surface);
     surface.redrawConnectors();
-    assert(surface.querySelector('[data-key="c"]').style.gridRow === '2',
-      'Compact: lane starting at row 6 packs its first box on the first grid row');
+    assert(surface.querySelector('.lane-stack [data-key="c"]') &&
+      surface.querySelector('[data-key="c"]').parentElement.firstElementChild.dataset.key === 'c',
+      'Compact: lane starting at row 6 packs its first box at the top of its own stack');
     const lateLaneTop = surface.querySelector('.lane[data-lane="1"]').getBoundingClientRect().top;
     const lateBoxTop = surface.querySelector('[data-key="c"]').getBoundingClientRect().top;
     assert(lateBoxTop - lateLaneTop < 100,
@@ -95,6 +96,27 @@
     surface.redrawConnectors();
     assert(surface.querySelector('[data-key="c"]').style.gridRow === '8',
       'Aligned: explicit rows keep the shared grid when opted in');
+
+    DL.renderSwimlane(JSON.stringify({
+      lanes: [
+        { title: 'Short', items: [{ key: 's1', title: 'S1' }, { key: 's2', title: 'S2' }, { key: 's3', title: 'S3' }] },
+        { title: 'Between', items: [{ key: 'g1', title: 'G1' }] },
+        { title: 'Hub', items: [{ key: 'h1', title: 'Hub', standalone: true }, { key: 'h2', title: 'Mid', standalone: true }, { key: 'h3', title: 'Leaf', standalone: true }] },
+        { title: 'Tall', items: [{ key: 't1', title: 'T1', children: [1, 2, 3, 4, 5].map((n) => ({ key: 'k' + n, title: 'K' + n })) }] }
+      ],
+      connections: [{ from: 'h1', to: 'h3', label: 'Same lane' }, { from: 's3', to: 'h2', label: 'Long jump' }]
+    }), surface);
+    surface.redrawConnectors();
+    const s1 = surface.querySelector('[data-key="s1"]').getBoundingClientRect();
+    const s2 = surface.querySelector('[data-key="s2"]').getBoundingClientRect();
+    assert(s2.top - s1.bottom < 40, 'Compact: a tall lane does not stretch spacing in other lanes');
+    const mid = surface.querySelector('[data-key="h2"]').getBoundingClientRect();
+    assert(!Array.from(surface.querySelectorAll('.conn-seg')).some((el) => overlap(el.getBoundingClientRect(), mid)),
+      'Same-lane link routes around the box in between');
+    const lanesBottom = surface.querySelector('.lanes').getBoundingClientRect().bottom;
+    assert(Array.from(surface.querySelectorAll('.conn-seg')).every((el) => el.getBoundingClientRect().bottom <= lanesBottom + 0.5),
+      'Long jump crosses on a free corridor instead of a bottom rail');
+    checkLanes('compact / same-lane and long-jump links');
 
     pane.style.width = '1440px';
     await DL.renderMermaid(DL_EXAMPLES.architecture, surface, pane);
