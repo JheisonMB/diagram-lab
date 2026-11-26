@@ -132,18 +132,19 @@ Review screenshots are taken with headless Chrome against `index.html`
 - **Explicit connections** ("bus", `cfg.connections`, can skip
   non-adjacent lanes, be dashed, bidirectional, and carry a label) are
   **always routed through the gaps between columns** (never through the
-  body of a lane): they exit the source box through its side edge toward
-  the nearest gap, drop down through that gap to a horizontal rail below
-  the whole grid, travel along the rail, rise through the destination
-  gap, and enter the destination box through its side edge. This
-  guarantees the line never crosses or overlaps the text of any
-  intermediate box, regardless of its vertical position within its column.
-- Adjacent connections use a local elbow if they carry no label, or if the
-  label fits next to the elbow. The rest get their own rails spaced 34px
-  apart; when a labeled connection shares a single gap, another free
-  port/gap is used so the rail doesn't collapse into a dangling stem.
-  Labels are placed last, on a white background, away from the rail and
-  avoiding lines/boxes; real space is reserved before the legend.
+  body of a box):
+  - Neighboring lanes use a local elbow through their shared gutter,
+    distributing vertical slots and box attachment ports so parallel lines
+    never merge or cross.
+  - Long jumps cross intermediate lanes through the first free horizontal
+    corridor (falling back to a dedicated bottom rail spaced 34px apart
+    only when no corridor is clear).
+  - Same-lane explicit links stay vertical when nothing sits between both
+    boxes, or route down the lane's side gutter when another box is in the
+    way.
+  - Labels are placed last, on a white background, avoiding lines, arrows,
+    boxes, and other labels; real space is reserved before the legend when
+    bottom rails are used.
 - In BPMN, extra space is reserved below events and gateways; the
   sequential flow routes around their captions, and short branches are
   labeled next to the vertical segment, away from the arrowheads. The JSON

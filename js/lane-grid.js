@@ -63,6 +63,29 @@ window.DL = window.DL || {};
       .join(' ');
 
     let cells = '';
+    if (opts && opts.compact) {
+      // Compact: every lane is an independent flex stack, so a tall block
+      // in one lane (e.g. many children) never stretches the others.
+      lanes.forEach((lane, li) => {
+        const col = li + 1;
+        cells += `<div class="lane-title" style="grid-column:${col};grid-row:1">${DL.escapeHtml(lane.title)}</div>`;
+        cells += `<div class="lane" data-lane="${li}" style="grid-column:${col};grid-row:2"></div>`;
+        cells += `<div class="lane-stack" style="grid-column:${col};grid-row:2">`;
+        (lane.items || []).forEach((item, ii) => {
+          const key = DL.itemKey(item, li, ii);
+          cells += opts.renderItem(item, key, li, '');
+          if (hasChildren(item)) {
+            cells += `<div class="box-row">`;
+            item.children.forEach((child, ci) => {
+              cells += opts.renderChild(child, DL.childKey(key, child, ci), li);
+            });
+            cells += `</div>`;
+          }
+        });
+        cells += `</div>`;
+      });
+      return `<div class="grid-wrap"><div class="lanes" style="grid-template-columns:${columns}">${cells}</div></div>`;
+    }
     lanes.forEach((lane, li) => {
       const col = li + 1;
       cells += `<div class="lane-title" style="grid-column:${col};grid-row:1">${DL.escapeHtml(lane.title)}</div>`;
@@ -129,14 +152,25 @@ window.DL = window.DL || {};
       }
     }
 
-    // Explicit: same lane -> direct; different lanes -> bus (through the gaps).
+    // Explicit: different lanes -> 'bus' (gutters between columns). Same
+    // lane -> 'direct' when nothing sits between both boxes, else 'bus'
+    // (down the lane's side gutter, so it never crosses a box).
+    const blockedBetween = (a, b) => {
+      const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+      const top = Math.min(ra.bottom, rb.bottom), bottom = Math.max(ra.top, rb.top);
+      return Array.from(surfaceEl.querySelectorAll(`[data-lane="${a.dataset.lane}"][data-key]`)).some((el) => {
+        if (el === a || el === b) return false;
+        const r = el.getBoundingClientRect();
+        return r.top < bottom && r.bottom > top;
+      });
+    };
     (cfg.connections || []).concat(extraConnections || []).forEach((conn) => {
       const fromEl = byKey(conn.from);
       const toEl = byKey(conn.to);
       if (!fromEl || !toEl) return;
       const sameLane = fromEl.dataset.lane === toEl.dataset.lane;
       edges.push({
-        kind: sameLane ? 'direct' : 'bus',
+        kind: sameLane && !blockedBetween(fromEl, toEl) ? 'direct' : 'bus',
         fromEl,
         toEl,
         style: conn.style === 'dashed' ? 'dashed' : 'solid',

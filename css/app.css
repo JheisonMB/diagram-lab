@@ -317,6 +317,26 @@ textarea::selection { background: #add6ff; }
   margin: 7px 10px;
   align-self: start;
 }
+/* Compact layout: each lane stacks its own items independently. */
+.lane-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 12px 10px 14px;
+  min-width: 0;
+  position: relative;
+}
+.lane-stack > .box,
+.lane-stack > .box-row { margin: 0; }
+.lane-stack > .box-row { margin: -14px 0 0 22px; }
+.lane-stack > .bpmn-event,
+.lane-stack > .bpmn-gateway {
+  align-self: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 32px;
+  position: relative;
+}
 .lanes > .bpmn-event,
 .lanes > .bpmn-gateway {
   align-self: start;
@@ -462,9 +482,9 @@ textarea::selection { background: #add6ff; }
   background: #ffffff;
   border: 1px solid #c3cada;
   border-radius: 4px;
-  padding: 3px 7px;
+  padding: 2px 6px;
   font-size: 10px;
-  line-height: 1.25;
+  line-height: 1.2;
   z-index: 3;
   color: #45506a;
   white-space: nowrap;
