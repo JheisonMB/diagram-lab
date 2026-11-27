@@ -137,6 +137,36 @@
       'Adjacent lanes never stretch a hairpin down to a bottom rail');
     checkLanes('crowded adjacent lanes / no bottom hairpins');
 
+    // Horizontal children grid + inline parent-child label (no broken external arrow)
+    // + standalone item after children does not get an unwanted fan-in arrow.
+    DL.renderSwimlane(JSON.stringify({
+      lanes: [
+        {
+          title: 'Local',
+          items: [
+            {
+              key: 'parent', title: 'Resolutor Local', standalone: true,
+              children: [
+                { key: 'c1', title: 'DB 1' },
+                { key: 'c2', title: 'DB 2' }
+              ]
+            },
+            { key: 'after', title: 'Posting Local', standalone: true }
+          ]
+        }
+      ],
+      connections: [{ from: 'parent', to: 'c1', bidirectional: true, label: 'Consulta datos' }]
+    }), surface);
+    surface.redrawConnectors();
+    const c1r = surface.querySelector('[data-key="c1"]').getBoundingClientRect();
+    const c2r = surface.querySelector('[data-key="c2"]').getBoundingClientRect();
+    assert(Math.abs(c1r.top - c2r.top) < 2 && c2r.left > c1r.right,
+      'Children render side by side in a horizontal row');
+    assert(surface.querySelector('.box-row-link') && surface.querySelector('.box-row-link').textContent.includes('Consulta datos'),
+      'Explicit parent-child connection renders inline inside the child group');
+    assert(surface.querySelectorAll('.conn-seg').length === 0,
+      'No external/broken arrows for contained parent-child or following standalone item');
+
     pane.style.width = '1440px';
     await DL.renderMermaid(DL_EXAMPLES.architecture, surface, pane);
     assert(!surface.querySelector('.error-box'), 'Architecture: valid syntax');

@@ -298,38 +298,8 @@ window.DL = window.DL || {};
       });
     });
 
-    // Gutter slots. Trunk key: same source box + side + style share a slot.
-    const gapUsers = new Map();
-    const useGap = (gap, shareKey, plan, field) => {
-      if (!gapUsers.has(gap)) gapUsers.set(gap, []);
-      const users = gapUsers.get(gap);
-      let user = users.find((u) => u.shareKey === shareKey);
-      if (!user) { user = { shareKey, plans: [], sortY: Infinity }; users.push(user); }
-      user.plans.push({ plan, field });
-      user.sortY = Math.min(user.sortY, (plan.r1.top + plan.r1.bottom) / 2, (plan.r2.top + plan.r2.bottom) / 2);
-    };
-    const trunkKey = (p) => `${keyOf(p.edge.fromEl)}|${p.fromSide}|${p.dashed}`;
-    plans.forEach((p, i) => {
-      if (p.kind === 'loop') return;
-      if (p.kind === 'same' || p.kind === 'adjacent') {
-        useGap(p.fromGap, p.kind === 'same' ? trunkKey(p) : `e${i}`, p, 'gapX');
-      } else {
-        useGap(p.fromGap, trunkKey(p), p, 'gapXFrom');
-        useGap(p.toGap, `in${i}`, p, 'gapXTo');
-      }
-    });
-    gapUsers.forEach((users, gap) => {
-      const gapWidth = laneRects[gap + 1].left - laneRects[gap].right;
-      const step = Math.min(10, Math.max(4, (gapWidth - 8) / Math.max(users.length, 1)));
-      // Connections that live higher up get the slots closer to the left.
-      users.sort((a, b) => a.sortY - b.sortY);
-      users.forEach((user, i) => {
-        const x = gapCenterX(gap) + (i - (users.length - 1) / 2) * step;
-        user.plans.forEach(({ plan, field }) => { plan[field] = x; });
-      });
-    });
-
-    // Attachment points along each box side.
+    // Attachment points along each box side (computed first so gutter
+    // allocation knows which adjacent links are purely horizontal).
     const ports = new Map();
     const usePort = (el, side, shareKey, otherY, plan, field) => {
       const k = `${keyOf(el)}|${side}`;
@@ -339,6 +309,7 @@ window.DL = window.DL || {};
       if (!user) { user = { shareKey, otherY, plans: [] }; entry.users.push(user); }
       user.plans.push({ plan, field });
     };
+    const trunkKey = (p) => `${keyOf(p.edge.fromEl)}|${p.fromSide}|${p.dashed}`;
     plans.forEach((p, i) => {
       if (p.kind === 'loop') return;
       const c1 = (p.r1.top + p.r1.bottom) / 2;
@@ -354,6 +325,41 @@ window.DL = window.DL || {};
       users.forEach((user, i) => {
         const y = (r.top + r.bottom) / 2 + (n > 1 ? (i / (n - 1) - 0.5) * span : 0);
         user.plans.forEach(({ plan, field }) => { plan[field] = y; });
+      });
+    });
+
+    // Gutter slots. Purely horizontal adjacent links need no vertical track.
+    const gapUsers = new Map();
+    const useGap = (gap, shareKey, plan, field) => {
+      if (!gapUsers.has(gap)) gapUsers.set(gap, []);
+      const users = gapUsers.get(gap);
+      let user = users.find((u) => u.shareKey === shareKey);
+      if (!user) { user = { shareKey, plans: [], sortY: Infinity, span: 0 }; users.push(user); }
+      user.plans.push({ plan, field });
+      user.sortY = Math.min(user.sortY, plan.y1, plan.y2);
+      user.span = Math.max(user.span, Math.abs(plan.y2 - plan.y1));
+    };
+    plans.forEach((p, i) => {
+      if (p.kind === 'loop') return;
+      if (p.kind === 'adjacent' && Math.abs(p.y2 - p.y1) < 2) {
+        p.gapX = gapCenterX(p.fromGap);
+        return;
+      }
+      if (p.kind === 'same' || p.kind === 'adjacent') {
+        useGap(p.fromGap, p.kind === 'same' ? trunkKey(p) : `e${i}`, p, 'gapX');
+      } else {
+        useGap(p.fromGap, trunkKey(p), p, 'gapXFrom');
+        useGap(p.toGap, `in${i}`, p, 'gapXTo');
+      }
+    });
+    gapUsers.forEach((users, gap) => {
+      const gapWidth = laneRects[gap + 1].left - laneRects[gap].right;
+      const step = Math.min(12, Math.max(6, (gapWidth - 10) / Math.max(users.length, 1)));
+      // Keep longer vertical runs separated cleanly from shorter local elbows.
+      users.sort((a, b) => a.sortY - b.sortY || b.span - a.span);
+      users.forEach((user, i) => {
+        const x = gapCenterX(gap) + (i - (users.length - 1) / 2) * step;
+        user.plans.forEach(({ plan, field }) => { plan[field] = x; });
       });
     });
 
@@ -378,17 +384,34 @@ window.DL = window.DL || {};
       if (edge.label) addLabel((gapXFrom + gapXTo) / 2, railY, edge.label, true);
     }
 
-    /** First y where a horizontal from xa to xb crosses no box nor corridor. */
-    function freeCorridor(xa, xb, preferred) {
+    /** First y where a horizontal from xa to xb crosses no box nor corridor.
+     *  When inside a gap between boxes, nudges the line toward one edge of the
+     *  gap so a ~26px band remains clear on the other side for its label. */
+    function freeCorridor(xa, xb, preferred, hasLabel) {
       const lo = Math.min(xa, xb), hi = Math.max(xa, xb);
       const clear = (y) => y > laneTop + 6 && y < contentBottom - 6 &&
-        !boxRects.some((r) => r.right > lo && r.left < hi && y > r.top - 8 && y < r.bottom + 8) &&
-        !corridors.some((c) => c.hi > lo && c.lo < hi && Math.abs(c.y - y) < 22);
-      for (const y of preferred) if (clear(y)) return y;
+        !boxRects.some((r) => r.right > lo && r.left < hi && y > r.top - 6 && y < r.bottom + 6) &&
+        !corridors.some((c) => c.hi > lo && c.lo < hi && Math.abs(c.y - y) < 24);
+      const pick = (y) => {
+        if (!clear(y)) return null;
+        if (!hasLabel) return y;
+        // Find the vertical gap bounds at y across [lo, hi].
+        let topBound = laneTop, botBound = contentBottom;
+        boxRects.forEach((r) => {
+          if (r.right <= lo || r.left >= hi) return;
+          if (r.bottom <= y) topBound = Math.max(topBound, r.bottom);
+          if (r.top >= y) botBound = Math.min(botBound, r.top);
+        });
+        if (y - topBound >= 24 || botBound - y >= 24) return y;
+        if (clear(botBound - 6)) return botBound - 6;
+        if (clear(topBound + 6)) return topBound + 6;
+        return y;
+      };
+      for (const y of preferred) { const hit = pick(y); if (hit !== null) return hit; }
       const start = preferred[0];
-      for (let d = 8; d < contentBottom; d += 8) {
-        if (clear(start + d)) return start + d;
-        if (clear(start - d)) return start - d;
+      for (let d = 6; d < contentBottom; d += 6) {
+        const down = pick(start + d); if (down !== null) return down;
+        const up = pick(start - d); if (up !== null) return up;
       }
       return null;
     }
@@ -438,7 +461,7 @@ window.DL = window.DL || {};
       if (p.kind === 'far') {
         // Long jump: cross the intermediate lanes on a free corridor.
         const { gapXFrom, gapXTo } = p;
-        const yStar = freeCorridor(fromEdgeX, gapXTo, [y1, y2, (y1 + y2) / 2]);
+        const yStar = freeCorridor(fromEdgeX, gapXTo, [y1, y2, (y1 + y2) / 2], !!edge.label);
         if (yStar === null) { drawBottomRail(p, gapXFrom, gapXTo); return; }
         const direct = Math.abs(yStar - y1) < 0.5;
         const cStart = direct ? fromEdgeX : gapXFrom;
@@ -453,12 +476,10 @@ window.DL = window.DL || {};
         addArrow(toEdgeX, y2, pointer(p.toSide));
         if (edge.bidirectional) addArrow(fromEdgeX, y1, pointer(p.fromSide));
         if (edge.label) {
-          // Place above or below the horizontal corridor across the skipped
-          // lanes, picking the first spot along the stretch with no overlap.
-          const lanesLo = Math.min(p.laneFrom, p.laneTo) + 1;
-          const lanesHi = Math.max(p.laneFrom, p.laneTo) - 1;
-          const loX = laneRects[lanesLo].left - wrapRect.left;
-          const hiX = laneRects[lanesHi].right - wrapRect.left;
+          // Place above or below the horizontal corridor across its full
+          // straight stretch, picking the first spot with no overlap.
+          const loX = Math.min(cStart, gapXTo);
+          const hiX = Math.max(cStart, gapXTo);
           const midX = (loX + hiX) / 2;
           const { w, h } = measure(edge.label);
           const obs = Array.from(surfaceEl.querySelectorAll('.box, .lane-title, .bpmn-shape, .bpmn-caption, .conn-seg, .conn-arrow'))
@@ -494,9 +515,13 @@ window.DL = window.DL || {};
       //     hang a label). Place the label near the entry/exit arrow or in
       //     the nearest free cell beside the shared gutter. ---
       const gapX = p.gapX;
-      addSeg(Math.min(fromEdgeX, gapX), y1 - 0.8, Math.abs(gapX - fromEdgeX), 1.6, dashed);
-      addSeg(gapX - 0.8, Math.min(y1, y2), 1.6, Math.abs(y2 - y1), dashed);
-      addSeg(Math.min(gapX, toEdgeX), y2 - 0.8, Math.abs(toEdgeX - gapX), 1.6, dashed);
+      if (Math.abs(y2 - y1) < 1) {
+        addSeg(Math.min(fromEdgeX, toEdgeX), y1 - 0.8, Math.abs(toEdgeX - fromEdgeX), 1.6, dashed);
+      } else {
+        addSeg(Math.min(fromEdgeX, gapX), y1 - 0.8, Math.abs(gapX - fromEdgeX), 1.6, dashed);
+        addSeg(gapX - 0.8, Math.min(y1, y2), 1.6, Math.abs(y2 - y1), dashed);
+        addSeg(Math.min(gapX, toEdgeX), y2 - 0.8, Math.abs(toEdgeX - gapX), 1.6, dashed);
+      }
       addArrow(toEdgeX, y2, pointer(p.toSide));
       if (edge.bidirectional) addArrow(fromEdgeX, y1, pointer(p.fromSide));
 

@@ -59,8 +59,47 @@ window.DL = window.DL || {};
     const lanes = cfg.lanes || [];
     const { positions, rowCount } = DL.layoutRows(lanes, !!(opts && opts.compact));
     const columns = lanes
-      .map((lane) => ((lane.items || []).some(hasChildren) ? 'minmax(300px, 1.4fr)' : 'minmax(205px, 1fr)'))
+      .map((lane) => ((lane.items || []).some(hasChildren) ? 'minmax(320px, 1.45fr)' : 'minmax(205px, 1fr)'))
       .join(' ');
+
+    // Explicit connections between a parent and one of its own children are
+    // rendered inline inside the child container instead of as broken external
+    // arrows.
+    const childConnMeta = new Map();
+    const conns = cfg.connections || [];
+    lanes.forEach((lane, li) => {
+      (lane.items || []).forEach((item, ii) => {
+        if (!hasChildren(item)) return;
+        const pKey = DL.itemKey(item, li, ii);
+        const childKeys = new Set(item.children.map((c, ci) => DL.childKey(pKey, c, ci)));
+        const labels = [];
+        conns.forEach((c) => {
+          const isPair = (c.from === pKey && childKeys.has(c.to)) || (c.to === pKey && childKeys.has(c.from));
+          if (isPair && c.label) {
+            const prefix = c.bidirectional ? '↕ ' : '↓ ';
+            const text = prefix + c.label;
+            if (!labels.includes(text)) labels.push(text);
+          }
+        });
+        if (labels.length) childConnMeta.set(pKey, labels.join(' · '));
+      });
+    });
+
+    function buildChildGroup(item, key, li, posStyle) {
+      const badge = childConnMeta.has(key)
+        ? `<div class="box-row-link">${DL.escapeHtml(childConnMeta.get(key))}</div>`
+        : '';
+      const cols = Math.min(item.children.length, 3);
+      const gridCols = item.children.length === 1 ? '1fr' : `repeat(auto-fit, minmax(120px, 1fr))`;
+      let html = `<div class="box-row" data-parent="${DL.escapeHtml(key)}" data-lane="${li}" data-cols="${cols}" style="${posStyle || ''}">`;
+      html += badge;
+      html += `<div class="box-row-grid" style="grid-template-columns:${gridCols}">`;
+      item.children.forEach((child, ci) => {
+        html += opts.renderChild(child, DL.childKey(key, child, ci), li);
+      });
+      html += `</div></div>`;
+      return html;
+    }
 
     let cells = '';
     if (opts && opts.compact) {
@@ -74,13 +113,7 @@ window.DL = window.DL || {};
         (lane.items || []).forEach((item, ii) => {
           const key = DL.itemKey(item, li, ii);
           cells += opts.renderItem(item, key, li, '');
-          if (hasChildren(item)) {
-            cells += `<div class="box-row">`;
-            item.children.forEach((child, ci) => {
-              cells += opts.renderChild(child, DL.childKey(key, child, ci), li);
-            });
-            cells += `</div>`;
-          }
+          if (hasChildren(item)) cells += buildChildGroup(item, key, li, '');
         });
         cells += `</div>`;
       });
@@ -94,13 +127,7 @@ window.DL = window.DL || {};
         const key = DL.itemKey(item, li, ii);
         const row = positions[li][ii] + 2;
         cells += opts.renderItem(item, key, li, `grid-column:${col};grid-row:${row};`);
-        if (hasChildren(item)) {
-          cells += `<div class="box-row" style="grid-column:${col};grid-row:${row + 1};">`;
-          item.children.forEach((child, ci) => {
-            cells += opts.renderChild(child, DL.childKey(key, child, ci), li);
-          });
-          cells += `</div>`;
-        }
+        if (hasChildren(item)) cells += buildChildGroup(item, key, li, `grid-column:${col};grid-row:${row + 1};`);
       });
     });
 
@@ -119,21 +146,28 @@ window.DL = window.DL || {};
     const edges = [];
     const byKey = (k) => surfaceEl.querySelector(`[data-key="${CSS.escape(k)}"]`);
 
+    const parentChildPairs = new Set();
     lanes.forEach((lane, li) => {
       const items = lane.items || [];
       items.forEach((item, ii) => {
-        const el = byKey(DL.itemKey(item, li, ii));
+        const key = DL.itemKey(item, li, ii);
+        const el = byKey(key);
         if (!el) return;
         const next = items[ii + 1];
         if (hasChildren(item)) {
-          // Fan-out parent -> children; fan-in children -> next item in the lane.
-          const nextEl = next ? byKey(DL.itemKey(next, li, ii + 1)) : null;
           item.children.forEach((child, ci) => {
-            const cEl = byKey(DL.childKey(DL.itemKey(item, li, ii), child, ci));
-            if (!cEl) return;
-            edges.push(rail(el, cEl));
-            if (nextEl) edges.push(rail(cEl, nextEl));
+            const cKey = DL.childKey(key, child, ci);
+            parentChildPairs.add(`${key}|${cKey}`);
+            parentChildPairs.add(`${cKey}|${key}`);
           });
+          // Visual nesting links parent -> children; if the next item is
+          // chained (not standalone), draw one clean vertical arrow from
+          // the children group to it.
+          if (next && !next.standalone && !item.branches) {
+            const rowEl = surfaceEl.querySelector(`.box-row[data-parent="${CSS.escape(key)}"]`);
+            const nextEl = byKey(DL.itemKey(next, li, ii + 1));
+            if (rowEl && nextEl) edges.push(direct(rowEl, nextEl));
+          }
         } else if (next && !next.standalone && !item.branches) {
           const nextEl = byKey(DL.itemKey(next, li, ii + 1));
           if (nextEl) edges.push(direct(el, nextEl));
@@ -165,6 +199,7 @@ window.DL = window.DL || {};
       });
     };
     (cfg.connections || []).concat(extraConnections || []).forEach((conn) => {
+      if (parentChildPairs.has(`${conn.from}|${conn.to}`)) return;
       const fromEl = byKey(conn.from);
       const toEl = byKey(conn.to);
       if (!fromEl || !toEl) return;
