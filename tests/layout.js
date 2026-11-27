@@ -118,6 +118,25 @@
       'Long jump crosses on a free corridor instead of a bottom rail');
     checkLanes('compact / same-lane and long-jump links');
 
+    DL.renderSwimlane(JSON.stringify({
+      lanes: [
+        { title: 'L1', items: [{ key: 'a1', title: 'A1' }, { key: 'a2', title: 'A2' }, { key: 'a3', title: 'A3' }] },
+        { title: 'L2', items: [{ key: 'b1', title: 'B1' }, { key: 'b2', title: 'B2' }, { key: 'b3', title: 'B3' }] },
+        { title: 'L3', items: [{ key: 'c1', title: 'C1' }, { key: 'c2', title: 'C2' }, { key: 'c3', title: 'C3' }] }
+      ],
+      connections: [
+        { from: 'a1', to: 'c1', style: 'dashed', label: 'Long corridor' },
+        { from: 'a1', to: 'b1', bidirectional: true, label: 'Sync step one' },
+        { from: 'a2', to: 'b2', bidirectional: true, label: 'Sync step two' },
+        { from: 'a3', to: 'b3', bidirectional: true, label: 'Sync step three' }
+      ]
+    }), surface);
+    surface.redrawConnectors();
+    const crowdedBottom = surface.querySelector('.lanes').getBoundingClientRect().bottom;
+    assert(Array.from(surface.querySelectorAll('.conn-seg')).every((el) => el.getBoundingClientRect().bottom <= crowdedBottom + 0.5),
+      'Adjacent lanes never stretch a hairpin down to a bottom rail');
+    checkLanes('crowded adjacent lanes / no bottom hairpins');
+
     pane.style.width = '1440px';
     await DL.renderMermaid(DL_EXAMPLES.architecture, surface, pane);
     assert(!surface.querySelector('.error-box'), 'Architecture: valid syntax');

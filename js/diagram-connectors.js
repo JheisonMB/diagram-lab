@@ -135,16 +135,23 @@ window.DL = window.DL || {};
               cy + h / 2 + 2 > r.top - wrapRect.top &&
               cy - h / 2 - 2 < r.bottom - wrapRect.top);
           if (!fits(x, y)) {
-            let found = null;
-            spiral:
-            for (let ring = 8; ring <= 200; ring += 8) {
-              for (let step = 0; step < 16; step++) {
-                const a = (step / 16) * Math.PI * 2;
-                const cx = x + Math.cos(a) * ring, cy = y + Math.sin(a) * ring * 0.75;
-                if (fits(cx, cy)) { found = { x: cx, y: cy }; break spiral; }
+            let best = null, bestDist = Infinity;
+            const ySteps = [0];
+            for (let d = 4; d <= 220; d += 4) ySteps.push(d, -d);
+            const xSteps = [0];
+            for (let d = 10; d <= 220; d += 10) xSteps.push(d, -d);
+            for (const dy of ySteps) {
+              if (dy * dy * 1.5 >= bestDist) break;
+              const cy = y + dy;
+              if (cy - h / 2 < laneTop) continue;
+              for (const dx of xSteps) {
+                const dist = dx * dx + dy * dy * 1.5;
+                if (dist >= bestDist) break;
+                const cx = x + dx;
+                if (fits(cx, cy)) { best = { x: cx, y: cy }; bestDist = dist; break; }
               }
             }
-            if (found) { x = found.x; y = found.y; }
+            if (best) { x = best.x; y = best.y; }
           }
         }
         label.style.left = x + 'px';
@@ -446,21 +453,53 @@ window.DL = window.DL || {};
         addArrow(toEdgeX, y2, pointer(p.toSide));
         if (edge.bidirectional) addArrow(fromEdgeX, y1, pointer(p.fromSide));
         if (edge.label) {
-          // Centered over the stretch that crosses the intermediate lanes.
+          // Place above or below the horizontal corridor across the skipped
+          // lanes, picking the first spot along the stretch with no overlap.
           const lanesLo = Math.min(p.laneFrom, p.laneTo) + 1;
           const lanesHi = Math.max(p.laneFrom, p.laneTo) - 1;
-          const midX = ((laneRects[lanesLo].left + laneRects[lanesHi].right) / 2) - wrapRect.left;
-          const { h } = measure(edge.label);
-          addLabel(midX, yStar - h / 2 - 4, edge.label);
+          const loX = laneRects[lanesLo].left - wrapRect.left;
+          const hiX = laneRects[lanesHi].right - wrapRect.left;
+          const midX = (loX + hiX) / 2;
+          const { w, h } = measure(edge.label);
+          const obs = Array.from(surfaceEl.querySelectorAll('.box, .lane-title, .bpmn-shape, .bpmn-caption, .conn-seg, .conn-arrow'))
+            .map((el) => el.getBoundingClientRect());
+          labels.forEach(({ x: lx, y: ly, text: lt, rail: lr }) => {
+            const q = measure(lt);
+            const qy = lr ? ly - q.h / 2 - 7 : ly;
+            obs.push({
+              left: wrapRect.left + lx - q.w / 2, top: wrapRect.top + qy - q.h / 2,
+              right: wrapRect.left + lx + q.w / 2, bottom: wrapRect.top + qy + q.h / 2,
+            });
+          });
+          const clear = (cx, cy) => cx - w / 2 >= loX && cx + w / 2 <= hiX && cy - h / 2 >= laneTop &&
+            !obs.some((r) =>
+              cx + w / 2 + 4 > r.left - wrapRect.left &&
+              cx - w / 2 - 4 < r.right - wrapRect.left &&
+              cy + h / 2 + 2 > r.top - wrapRect.top &&
+              cy - h / 2 - 2 < r.bottom - wrapRect.top);
+          const xs = [midX];
+          for (let d = 16; d < hiX - loX; d += 16) xs.push(midX + d, midX - d);
+          let chosen = null;
+          for (const cy of [yStar - h / 2 - 3, yStar + h / 2 + 3]) {
+            const cx = xs.find((x) => clear(x, cy));
+            if (cx !== undefined) { chosen = { x: cx, y: cy }; break; }
+          }
+          addLabel(chosen ? chosen.x : midX, chosen ? chosen.y : yStar - h / 2 - 4, edge.label);
         }
         return;
       }
 
-      // --- Neighboring lanes: route through the local gap — unless the
-      //     connection carries a label that fits nowhere nearby, in which
-      //     case it falls through to a dedicated rail below the grid. ---
+      // --- Neighboring lanes: always route cleanly through the local gap
+      //     (never stretching a hairpin down to the bottom rail just to
+      //     hang a label). Place the label near the entry/exit arrow or in
+      //     the nearest free cell beside the shared gutter. ---
       const gapX = p.gapX;
-      let labelPos = null;
+      addSeg(Math.min(fromEdgeX, gapX), y1 - 0.8, Math.abs(gapX - fromEdgeX), 1.6, dashed);
+      addSeg(gapX - 0.8, Math.min(y1, y2), 1.6, Math.abs(y2 - y1), dashed);
+      addSeg(Math.min(gapX, toEdgeX), y2 - 0.8, Math.abs(toEdgeX - gapX), 1.6, dashed);
+      addArrow(toEdgeX, y2, pointer(p.toSide));
+      if (edge.bidirectional) addArrow(fromEdgeX, y1, pointer(p.fromSide));
+
       if (edge.label) {
         const { w, h } = measure(edge.label);
         const obstacles = Array.from(surfaceEl.querySelectorAll('.box, .lane-title, .bpmn-shape, .bpmn-caption, .conn-seg, .conn-arrow'))
@@ -476,15 +515,6 @@ window.DL = window.DL || {};
             right: wrapRect.left + lx + q.w / 2, bottom: wrapRect.top + qy + q.h / 2,
           });
         });
-        // The elbow itself isn't in the DOM yet: keep the label off its
-        // three planned segments (viewport coords, like the rest).
-        [[Math.min(fromEdgeX, gapX), y1, Math.max(fromEdgeX, gapX), y1],
-         [gapX, Math.min(y1, y2), gapX, Math.max(y1, y2)],
-         [Math.min(gapX, toEdgeX), y2, Math.max(gapX, toEdgeX), y2]
-        ].forEach(([l, t, r, b]) => obstacles.push({
-          left: l + wrapRect.left - 1, top: t + wrapRect.top - 1,
-          right: r + wrapRect.left + 1, bottom: b + wrapRect.top + 1,
-        }));
         const fits = (cx, cy) => cx - w / 2 >= 0 && cx + w / 2 <= wrap.clientWidth && cy - h / 2 >= laneTop &&
           !obstacles.some((r) =>
             cx + w / 2 + 4 > r.left - wrapRect.left &&
@@ -495,27 +525,27 @@ window.DL = window.DL || {};
         const yCandidates = [yMid];
         const ySpan = Math.abs(y2 - y1) / 2 + 60;
         for (let d = 8; d < ySpan; d += 8) yCandidates.push(yMid + d, yMid - d);
+        const nearTargetX = p.toSide === 'left' ? p.r2.left + w / 2 + 4 : p.r2.right - w / 2 - 4;
+        const nearSourceX = p.fromSide === 'left' ? p.r1.left + w / 2 + 4 : p.r1.right - w / 2 - 4;
+        const nearTarget = [
+          { x: nearTargetX, y: p.r2.top - h / 2 - 5 },
+          { x: nearTargetX, y: p.r2.bottom + h / 2 + 5 }
+        ];
+        const nearSource = [
+          { x: nearSourceX, y: p.r1.bottom + h / 2 + 5 },
+          { x: nearSourceX, y: p.r1.top - h / 2 - 5 }
+        ];
         const gapCandidates = [];
-        yCandidates.forEach((cy) => [gapX, gapX + w / 2 + 8, gapX - w / 2 - 8].forEach((cx) => gapCandidates.push({ x: cx, y: cy })));
-        // Long vertical hop: a caption beside the target's entry arrow reads
-        // better than one floating halfway down a crowded gutter.
-        const nearX = p.toSide === 'left' ? p.r2.left + w / 2 + 4 : p.r2.right - w / 2 - 4;
-        const nearTarget = [{ x: nearX, y: p.r2.top - h / 2 - 6 }, { x: nearX, y: p.r2.bottom + h / 2 + 6 }];
-        const candidates = Math.abs(y2 - y1) >= 40 ? nearTarget.concat(gapCandidates) : gapCandidates.concat(nearTarget);
-        labelPos = candidates.find((c) => fits(c.x, c.y)) || null;
+        yCandidates.forEach((cy) => {
+          [gapX, gapX + w / 2 + 8, gapX - w / 2 - 8, nearTargetX, nearSourceX]
+            .forEach((cx) => gapCandidates.push({ x: cx, y: cy }));
+        });
+        const candidates = Math.abs(y2 - y1) >= 40
+          ? nearTarget.concat(nearSource, gapCandidates)
+          : nearSource.concat(nearTarget, gapCandidates);
+        const labelPos = candidates.find((c) => fits(c.x, c.y));
+        addLabel(labelPos ? labelPos.x : gapX, labelPos ? labelPos.y : yMid, edge.label);
       }
-
-      if (!edge.label || labelPos) {
-        addSeg(Math.min(fromEdgeX, gapX), y1 - 0.8, Math.abs(gapX - fromEdgeX), 1.6, dashed);
-        addSeg(gapX - 0.8, Math.min(y1, y2), 1.6, Math.abs(y2 - y1), dashed);
-        addSeg(Math.min(gapX, toEdgeX), y2 - 0.8, Math.abs(toEdgeX - gapX), 1.6, dashed);
-        addArrow(toEdgeX, y2, pointer(p.toSide));
-        if (edge.bidirectional) addArrow(fromEdgeX, y1, pointer(p.fromSide));
-        if (labelPos) addLabel(labelPos.x, labelPos.y, edge.label);
-        return;
-      }
-      // No local room for the label: fall through to bottom-rail routing.
-      drawBottomRail(p, gapX, gapX);
     });
 
     placeLabels();
