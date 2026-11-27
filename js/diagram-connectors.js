@@ -204,7 +204,9 @@ window.DL = window.DL || {};
       const y1 = r1.bottom - wrapRect.top;
       const x2 = r2.left + r2.width / 2 - wrapRect.left;
       const y2 = r2.top - wrapRect.top;
-      const midY = y1 + (y2 - y1) / 2;
+      const dashed = edge.style === 'dashed';
+      const forked = Math.abs(x1 - x2) >= 1;
+      const midY = forked ? y1 + Math.min(10, (y2 - y1) / 2) : y1 + (y2 - y1) / 2;
 
       const caption = edge.fromEl.querySelector('.bpmn-caption');
       if (caption) {
@@ -213,22 +215,28 @@ window.DL = window.DL || {};
         const startX = r1.right - wrapRect.left;
         const startY = r1.top + r1.height / 2 - wrapRect.top;
         const turnY = y2 - 18;
-        addSeg(startX, startY - 0.8, sideX - startX, 1.6, false);
-        addSeg(sideX - 0.8, startY, 1.6, turnY - startY, false);
-        addSeg(Math.min(sideX, x2), turnY - 0.8, Math.abs(sideX - x2), 1.6, false);
-        addSeg(x2 - 0.8, turnY, 1.6, y2 - turnY, false);
+        addSeg(startX, startY - 0.8, sideX - startX, 1.6, dashed);
+        addSeg(sideX - 0.8, startY, 1.6, turnY - startY, dashed);
+        addSeg(Math.min(sideX, x2), turnY - 0.8, Math.abs(sideX - x2), 1.6, dashed);
+        addSeg(x2 - 0.8, turnY, 1.6, y2 - turnY, dashed);
         if (edge.label) addLabel(sideX + 20, (cr.bottom - wrapRect.top + turnY) / 2, edge.label);
-      } else if (Math.abs(x1 - x2) < 1) {
-        addSeg(x1 - 0.8, y1, 1.6, y2 - y1, false);
+      } else if (!forked) {
+        addSeg(x1 - 0.8, y1, 1.6, y2 - y1, dashed);
       } else {
-        addSeg(x1 - 0.8, y1, 1.6, Math.max(midY - y1, 1.6), false);
-        addSeg(Math.min(x1, x2), midY - 0.8, Math.abs(x2 - x1), 1.6, false);
-        addSeg(x2 - 0.8, midY, 1.6, Math.max(y2 - midY, 1.6), false);
+        addSeg(x1 - 0.8, y1, 1.6, Math.max(midY - y1, 1.6), dashed);
+        addSeg(Math.min(x1, x2), midY - 0.8, Math.abs(x2 - x1), 1.6, dashed);
+        addSeg(x2 - 0.8, midY, 1.6, Math.max(y2 - midY, 1.6), dashed);
       }
       addArrow(x2, y2, 'down');
+      if (edge.bidirectional && !caption) addArrow(x1, y1 + 1, 'up');
       if (edge.label && !caption) {
         const { w } = measure(edge.label);
-        addLabel(x1 + w / 2 + 8, midY, edge.label);
+        if (forked) {
+          const lx = x2 < x1 ? r2.left - wrapRect.left + w / 2 + 2 : r2.right - wrapRect.left - w / 2 - 2;
+          addLabel(lx, (midY + y2) / 2, edge.label);
+        } else {
+          addLabel(x1 + w / 2 + 8, midY, edge.label);
+        }
       }
     });
 

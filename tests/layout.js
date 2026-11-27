@@ -137,8 +137,8 @@
       'Adjacent lanes never stretch a hairpin down to a bottom rail');
     checkLanes('crowded adjacent lanes / no bottom hairpins');
 
-    // Horizontal children grid + inline parent-child label (no broken external arrow)
-    // + standalone item after children does not get an unwanted fan-in arrow.
+    // Horizontal children grid + normal parent-child connector (no duplicate/broken
+    // arrow) + same-lane fan-out grouping (e.g. Eventos BEA -> 2 subscribers).
     DL.renderSwimlane(JSON.stringify({
       lanes: [
         {
@@ -153,19 +153,32 @@
             },
             { key: 'after', title: 'Posting Local', standalone: true }
           ]
+        },
+        {
+          title: 'Events',
+          items: [
+            { key: 'ev', title: 'Eventos BEA', standalone: true },
+            { key: 's1', title: 'Notificaciones', standalone: true },
+            { key: 's2', title: 'Eberillion', standalone: true }
+          ]
         }
       ],
-      connections: [{ from: 'parent', to: 'c1', bidirectional: true, label: 'Consulta datos' }]
+      connections: [
+        { from: 'parent', to: 'c1', bidirectional: true, label: 'Consulta datos' },
+        { from: 'ev', to: 's1', style: 'dashed', label: 'Notifica evento' },
+        { from: 'ev', to: 's2', style: 'dashed', label: 'Envía evento' }
+      ]
     }), surface);
     surface.redrawConnectors();
     const c1r = surface.querySelector('[data-key="c1"]').getBoundingClientRect();
     const c2r = surface.querySelector('[data-key="c2"]').getBoundingClientRect();
     assert(Math.abs(c1r.top - c2r.top) < 2 && c2r.left > c1r.right,
       'Children render side by side in a horizontal row');
-    assert(surface.querySelector('.box-row-link') && surface.querySelector('.box-row-link').textContent.includes('Consulta datos'),
-      'Explicit parent-child connection renders inline inside the child group');
-    assert(surface.querySelectorAll('.conn-seg').length === 0,
-      'No external/broken arrows for contained parent-child or following standalone item');
+    const s1r = surface.querySelector('[data-key="s1"]').getBoundingClientRect();
+    const s2r = surface.querySelector('[data-key="s2"]').getBoundingClientRect();
+    assert(Math.abs(s1r.top - s2r.top) < 2 && s2r.left > s1r.right,
+      'Same-lane fan-out targets render side by side in a horizontal row');
+    checkLanes('horizontal children and same-lane fan-out');
 
     pane.style.width = '1440px';
     await DL.renderMermaid(DL_EXAMPLES.architecture, surface, pane);

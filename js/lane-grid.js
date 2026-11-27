@@ -58,46 +58,50 @@ window.DL = window.DL || {};
   DL.buildLaneGrid = function (cfg, opts) {
     const lanes = cfg.lanes || [];
     const { positions, rowCount } = DL.layoutRows(lanes, !!(opts && opts.compact));
-    const columns = lanes
-      .map((lane) => ((lane.items || []).some(hasChildren) ? 'minmax(320px, 1.45fr)' : 'minmax(205px, 1fr)'))
-      .join(' ');
-
-    // Explicit connections between a parent and one of its own children are
-    // rendered inline inside the child container instead of as broken external
-    // arrows.
-    const childConnMeta = new Map();
+    // Detect same-lane fan-out groups: when an item connects to 2+ consecutive
+    // standalone items right after it in the same lane (e.g. Eventos BEA ->
+    // Notificaciones & Eberillion), group those targets into a horizontal row
+    // so both branches share the exact same clean fork geometry.
+    const fanoutAfter = new Map(); // laneIdx -> Map(parentItemIdx -> [childItemIdx...])
+    const groupedInLane = new Set(); // "li:ii"
     const conns = cfg.connections || [];
     lanes.forEach((lane, li) => {
-      (lane.items || []).forEach((item, ii) => {
-        if (!hasChildren(item)) return;
+      const items = lane.items || [];
+      const keyToIdx = new Map();
+      items.forEach((it, ii) => keyToIdx.set(DL.itemKey(it, li, ii), ii));
+      items.forEach((item, ii) => {
+        if (hasChildren(item)) return;
         const pKey = DL.itemKey(item, li, ii);
-        const childKeys = new Set(item.children.map((c, ci) => DL.childKey(pKey, c, ci)));
-        const labels = [];
+        const targets = [];
         conns.forEach((c) => {
-          const isPair = (c.from === pKey && childKeys.has(c.to)) || (c.to === pKey && childKeys.has(c.from));
-          if (isPair && c.label) {
-            const prefix = c.bidirectional ? '↕ ' : '↓ ';
-            const text = prefix + c.label;
-            if (!labels.includes(text)) labels.push(text);
+          if (c.from !== pKey) return;
+          const ti = keyToIdx.get(c.to);
+          if (ti !== undefined && ti > ii && items[ti].standalone && !hasChildren(items[ti]) && !targets.includes(ti)) {
+            targets.push(ti);
           }
         });
-        if (labels.length) childConnMeta.set(pKey, labels.join(' · '));
+        targets.sort((a, b) => a - b);
+        // Only group if they form a contiguous block right after the parent.
+        if (targets.length >= 2 && targets[0] === ii + 1 &&
+            targets.every((ti, k) => ti === ii + 1 + k && !groupedInLane.has(`${li}:${ti}`))) {
+          if (!fanoutAfter.has(li)) fanoutAfter.set(li, new Map());
+          fanoutAfter.get(li).set(ii, targets);
+          targets.forEach((ti) => groupedInLane.add(`${li}:${ti}`));
+        }
       });
     });
 
-    function buildChildGroup(item, key, li, posStyle) {
-      const badge = childConnMeta.has(key)
-        ? `<div class="box-row-link">${DL.escapeHtml(childConnMeta.get(key))}</div>`
-        : '';
-      const cols = Math.min(item.children.length, 3);
-      const gridCols = item.children.length === 1 ? '1fr' : `repeat(auto-fit, minmax(120px, 1fr))`;
-      let html = `<div class="box-row" data-parent="${DL.escapeHtml(key)}" data-lane="${li}" data-cols="${cols}" style="${posStyle || ''}">`;
-      html += badge;
-      html += `<div class="box-row-grid" style="grid-template-columns:${gridCols}">`;
-      item.children.forEach((child, ci) => {
-        html += opts.renderChild(child, DL.childKey(key, child, ci), li);
+    const columns = lanes
+      .map((lane, li) => (((lane.items || []).some(hasChildren) || fanoutAfter.has(li)) ? 'minmax(320px, 1.45fr)' : 'minmax(205px, 1fr)'))
+      .join(' ');
+
+    function buildRowHtml(parentKey, children, li, posStyle, renderFn) {
+      const gridCols = children.length === 1 ? '1fr' : 'repeat(auto-fit, minmax(130px, 1fr))';
+      let html = `<div class="box-row" data-parent="${DL.escapeHtml(parentKey)}" data-lane="${li}" style="grid-template-columns:${gridCols};${posStyle || ''}">`;
+      children.forEach((child, ci) => {
+        html += renderFn(child, ci);
       });
-      html += `</div></div>`;
+      html += `</div>`;
       return html;
     }
 
@@ -110,10 +114,18 @@ window.DL = window.DL || {};
         cells += `<div class="lane-title" style="grid-column:${col};grid-row:1">${DL.escapeHtml(lane.title)}</div>`;
         cells += `<div class="lane" data-lane="${li}" style="grid-column:${col};grid-row:2"></div>`;
         cells += `<div class="lane-stack" style="grid-column:${col};grid-row:2">`;
-        (lane.items || []).forEach((item, ii) => {
+        const items = lane.items || [];
+        const laneFanouts = fanoutAfter.get(li);
+        items.forEach((item, ii) => {
+          if (groupedInLane.has(`${li}:${ii}`)) return;
           const key = DL.itemKey(item, li, ii);
           cells += opts.renderItem(item, key, li, '');
-          if (hasChildren(item)) cells += buildChildGroup(item, key, li, '');
+          if (hasChildren(item)) {
+            cells += buildRowHtml(key, item.children, li, '', (c, ci) => opts.renderChild(c, DL.childKey(key, c, ci), li));
+          } else if (laneFanouts && laneFanouts.has(ii)) {
+            const targetIdxs = laneFanouts.get(ii);
+            cells += buildRowHtml(key, targetIdxs, li, '', (ti) => opts.renderItem(items[ti], DL.itemKey(items[ti], li, ti), li, ''));
+          }
         });
         cells += `</div>`;
       });
@@ -127,7 +139,9 @@ window.DL = window.DL || {};
         const key = DL.itemKey(item, li, ii);
         const row = positions[li][ii] + 2;
         cells += opts.renderItem(item, key, li, `grid-column:${col};grid-row:${row};`);
-        if (hasChildren(item)) cells += buildChildGroup(item, key, li, `grid-column:${col};grid-row:${row + 1};`);
+        if (hasChildren(item)) {
+          cells += buildRowHtml(key, item.children, li, `grid-column:${col};grid-row:${row + 1};`, (c, ci) => opts.renderChild(c, DL.childKey(key, c, ci), li));
+        }
       });
     });
 
@@ -146,7 +160,11 @@ window.DL = window.DL || {};
     const edges = [];
     const byKey = (k) => surfaceEl.querySelector(`[data-key="${CSS.escape(k)}"]`);
 
-    const parentChildPairs = new Set();
+    const explicitPairs = new Set();
+    (cfg.connections || []).concat(extraConnections || []).forEach((c) => {
+      explicitPairs.add(`${c.from}|${c.to}`);
+      explicitPairs.add(`${c.to}|${c.from}`);
+    });
     lanes.forEach((lane, li) => {
       const items = lane.items || [];
       items.forEach((item, ii) => {
@@ -155,14 +173,19 @@ window.DL = window.DL || {};
         if (!el) return;
         const next = items[ii + 1];
         if (hasChildren(item)) {
+          // Connect parent cleanly down to its first row of children (skipping
+          // pairs already declared in cfg.connections so we don't double-draw).
+          const elBottom = el.getBoundingClientRect().bottom;
           item.children.forEach((child, ci) => {
             const cKey = DL.childKey(key, child, ci);
-            parentChildPairs.add(`${key}|${cKey}`);
-            parentChildPairs.add(`${cKey}|${key}`);
+            if (explicitPairs.has(`${key}|${cKey}`)) return;
+            const cEl = byKey(cKey);
+            if (cEl && cEl.getBoundingClientRect().top - elBottom < 60) {
+              edges.push(direct(el, cEl));
+            }
           });
-          // Visual nesting links parent -> children; if the next item is
-          // chained (not standalone), draw one clean vertical arrow from
-          // the children group to it.
+          // If the next item is chained (not standalone), draw one clean
+          // vertical arrow from the children row to it.
           if (next && !next.standalone && !item.branches) {
             const rowEl = surfaceEl.querySelector(`.box-row[data-parent="${CSS.escape(key)}"]`);
             const nextEl = byKey(DL.itemKey(next, li, ii + 1));
@@ -199,7 +222,6 @@ window.DL = window.DL || {};
       });
     };
     (cfg.connections || []).concat(extraConnections || []).forEach((conn) => {
-      if (parentChildPairs.has(`${conn.from}|${conn.to}`)) return;
       const fromEl = byKey(conn.from);
       const toEl = byKey(conn.to);
       if (!fromEl || !toEl) return;
